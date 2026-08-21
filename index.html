@@ -1,0 +1,1042 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kadermeister – Verein · Kader · Aufstellung</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Work+Sans:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --pitch-deep:#132a1f;
+    --pitch-mid:#1e4632;
+    --pitch-light:#265539;
+    --ink:#0c1712;
+    --ink-2:#14231b;
+    --chalk:#eef3ea;
+    --chalk-dim:#b9c7bd;
+    --paper:#eef2ea;
+    --paper-2:#e2e9dd;
+    --gold:#e3b23c;
+    --gold-dim:#8a6a24;
+    --clay:#b8434f;
+    --clay-dim:#6e2830;
+    --line:#33493c;
+    --radius:10px;
+    --shadow:0 10px 30px -12px rgba(0,0,0,.55);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;height:100%;}
+  body{
+    background:var(--ink);
+    color:var(--chalk);
+    font-family:'Work Sans',sans-serif;
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3,.display{font-family:'Oswald',sans-serif;text-transform:uppercase;letter-spacing:.03em;}
+  .mono{font-family:'JetBrains Mono',monospace;}
+  button{font-family:inherit;cursor:pointer;}
+  input,select{font-family:inherit;}
+  a{color:inherit;}
+  ::selection{background:var(--gold);color:var(--ink);}
+  :focus-visible{outline:2px solid var(--gold);outline-offset:2px;}
+
+  /* ---------- layout shells ---------- */
+  #app{min-height:100vh;display:flex;flex-direction:column;}
+  .topbar{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:14px 24px;background:var(--ink-2);border-bottom:1px solid var(--line);
+    position:sticky;top:0;z-index:20;
+  }
+  .brand{display:flex;align-items:center;gap:10px;}
+  .brand .mark{
+    width:30px;height:30px;border-radius:6px;background:var(--gold);
+    display:flex;align-items:center;justify-content:center;
+    font-family:'Oswald',sans-serif;font-weight:700;color:var(--ink);font-size:15px;
+    transform:rotate(-4deg);
+  }
+  .brand .title{font-size:19px;font-weight:600;letter-spacing:.06em;}
+  .topbar-right{display:flex;align-items:center;gap:14px;font-size:13px;color:var(--chalk-dim);}
+  .btn{
+    border:1px solid var(--line);background:transparent;color:var(--chalk);
+    padding:9px 16px;border-radius:7px;font-size:13.5px;font-weight:500;
+    transition:.15s ease;
+  }
+  .btn:hover{border-color:var(--gold);color:var(--gold);}
+  .btn-primary{
+    background:var(--gold);border-color:var(--gold);color:var(--ink);font-weight:600;
+  }
+  .btn-primary:hover{background:#f0c158;color:var(--ink);border-color:#f0c158;}
+  .btn-danger{border-color:var(--clay-dim);color:#e79aa1;}
+  .btn-danger:hover{border-color:var(--clay);color:#ffbfc5;}
+  .btn-ghost{border-color:transparent;color:var(--chalk-dim);padding:6px 10px;}
+  .btn-ghost:hover{color:var(--gold);}
+  .btn-small{padding:6px 12px;font-size:12.5px;}
+  .btn:disabled{opacity:.4;cursor:not-allowed;}
+
+  main{flex:1;display:flex;flex-direction:column;}
+
+  /* ---------- auth screen ---------- */
+  .auth-wrap{
+    flex:1;display:flex;align-items:center;justify-content:center;padding:32px 16px;
+    background:
+      repeating-linear-gradient(90deg, var(--pitch-mid) 0 80px, var(--pitch-light) 80px 160px),
+      var(--pitch-deep);
+    position:relative;
+  }
+  .auth-wrap::before{
+    content:"";position:absolute;inset:0;
+    background:radial-gradient(ellipse at 50% 0%, rgba(0,0,0,0) 0%, rgba(0,0,0,.55) 100%);
+  }
+  .auth-card{
+    position:relative;z-index:1;
+    width:100%;max-width:420px;background:var(--ink-2);
+    border:1px solid var(--line);border-radius:14px;padding:36px 32px 30px;
+    box-shadow:var(--shadow);
+  }
+  .auth-hero{text-align:center;margin-bottom:22px;}
+  .auth-hero .mark-lg{
+    width:56px;height:56px;border-radius:12px;background:var(--gold);margin:0 auto 14px;
+    display:flex;align-items:center;justify-content:center;font-family:'Oswald',sans-serif;
+    font-weight:700;color:var(--ink);font-size:26px;transform:rotate(-4deg);
+  }
+  .auth-hero h1{font-size:26px;margin:0 0 6px;}
+  .auth-hero p{color:var(--chalk-dim);font-size:13.5px;margin:0;line-height:1.5;}
+  .tabbar{display:flex;background:var(--ink);border-radius:8px;padding:4px;margin-bottom:20px;border:1px solid var(--line);}
+  .tabbar button{
+    flex:1;background:transparent;border:none;color:var(--chalk-dim);padding:9px 0;
+    border-radius:6px;font-size:13.5px;font-weight:600;letter-spacing:.02em;
+  }
+  .tabbar button.active{background:var(--gold);color:var(--ink);}
+  .field{margin-bottom:14px;}
+  .field label{display:block;font-size:12px;color:var(--chalk-dim);margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em;}
+  .field input,.field select{
+    width:100%;background:var(--ink);border:1px solid var(--line);color:var(--chalk);
+    padding:10px 12px;border-radius:7px;font-size:14px;
+  }
+  .field input:focus,.field select:focus{border-color:var(--gold);}
+  .form-msg{font-size:13px;color:var(--clay);min-height:18px;margin:-4px 0 10px;}
+  .form-msg.ok{color:#7fd99a;}
+
+  /* ---------- dashboard ---------- */
+  .page{padding:32px 24px 60px;max-width:1100px;margin:0 auto;width:100%;}
+  .page-head{display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:22px;}
+  .page-head h1{font-size:24px;margin:0;}
+  .page-head p{color:var(--chalk-dim);font-size:13.5px;margin:4px 0 0;}
+  .club-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px;}
+  .club-card{
+    background:var(--ink-2);border:1px solid var(--line);border-radius:12px;padding:20px;
+    display:flex;flex-direction:column;gap:10px;cursor:pointer;transition:.15s ease;text-align:left;
+  }
+  .club-card:hover{border-color:var(--gold);transform:translateY(-2px);}
+  .crest{
+    width:46px;height:46px;border-radius:9px;display:flex;align-items:center;justify-content:center;
+    font-family:'Oswald',sans-serif;font-weight:700;font-size:16px;color:#fff;
+    box-shadow:inset 0 0 0 2px rgba(255,255,255,.18);
+  }
+  .club-card .name{font-family:'Oswald',sans-serif;font-size:17px;text-transform:uppercase;letter-spacing:.02em;}
+  .club-card .meta{color:var(--chalk-dim);font-size:12.5px;}
+  .club-card .count{
+    margin-top:auto;font-size:12px;color:var(--gold);font-weight:600;
+    display:flex;align-items:center;gap:6px;
+  }
+  .club-card.add{
+    align-items:center;justify-content:center;border-style:dashed;color:var(--chalk-dim);
+  }
+  .club-card.add:hover{color:var(--gold);}
+  .club-card.add .plus{font-size:30px;line-height:1;font-family:'Oswald',sans-serif;}
+
+  .modal-backdrop{
+    position:fixed;inset:0;background:rgba(5,10,7,.65);display:flex;align-items:center;justify-content:center;
+    z-index:100;padding:16px;
+  }
+  .modal{
+    background:var(--ink-2);border:1px solid var(--line);border-radius:14px;padding:28px;
+    width:100%;max-width:440px;box-shadow:var(--shadow);
+  }
+  .modal h2{font-size:19px;margin:0 0 4px;}
+  .modal .sub{color:var(--chalk-dim);font-size:12.5px;margin:0 0 18px;}
+  .color-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;}
+  .swatch{
+    width:28px;height:28px;border-radius:7px;border:2px solid transparent;cursor:pointer;
+  }
+  .swatch.selected{border-color:var(--chalk);}
+  .modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:20px;}
+
+  /* ---------- workspace ---------- */
+  .club-strip{
+    display:flex;align-items:center;gap:12px;padding:16px 24px;background:var(--ink-2);
+    border-bottom:1px solid var(--line);
+  }
+  .club-strip .name{font-size:18px;}
+  .club-strip .meta{color:var(--chalk-dim);font-size:12.5px;}
+  .tabs{
+    display:flex;gap:4px;padding:0 24px;background:var(--ink-2);border-bottom:1px solid var(--line);
+    overflow-x:auto;
+  }
+  .tabs button{
+    background:transparent;border:none;color:var(--chalk-dim);padding:12px 16px;font-size:13.5px;
+    font-weight:600;letter-spacing:.02em;border-bottom:2px solid transparent;white-space:nowrap;
+  }
+  .tabs button.active{color:var(--gold);border-color:var(--gold);}
+
+  .workarea{padding:26px 24px 60px;max-width:1180px;margin:0 auto;width:100%;}
+
+  /* --- kader tab --- */
+  .kader-layout{display:grid;grid-template-columns:300px 1fr;gap:22px;align-items:start;}
+  @media (max-width:760px){.kader-layout{grid-template-columns:1fr;}}
+  .card{background:var(--ink-2);border:1px solid var(--line);border-radius:12px;padding:20px;}
+  .card h3{font-size:15px;margin:0 0 14px;color:var(--chalk);}
+  .player-table{width:100%;border-collapse:collapse;}
+  .player-table th{
+    text-align:left;font-size:11px;color:var(--chalk-dim);text-transform:uppercase;letter-spacing:.06em;
+    padding:0 10px 10px;border-bottom:1px solid var(--line);font-weight:600;
+  }
+  .player-table td{padding:11px 10px;border-bottom:1px solid var(--line);font-size:14px;vertical-align:middle;}
+  .player-table tr:last-child td{border-bottom:none;}
+  .num-badge{
+    display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;
+    border-radius:7px;background:var(--pitch-mid);color:var(--chalk);font-family:'JetBrains Mono',monospace;
+    font-weight:700;font-size:13px;
+  }
+  .pos-badge{
+    display:inline-block;padding:3px 8px;border-radius:5px;background:var(--ink);border:1px solid var(--line);
+    font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--gold);letter-spacing:.03em;
+  }
+  .empty-note{color:var(--chalk-dim);font-size:13.5px;padding:18px 4px;text-align:center;}
+
+  /* --- aufstellung tab --- */
+  .formation-toolbar{display:flex;align-items:center;gap:14px;margin-bottom:18px;flex-wrap:wrap;}
+  .formation-toolbar .field{margin:0;min-width:180px;}
+  .pitch-layout{display:grid;grid-template-columns:1fr 250px;gap:22px;align-items:start;}
+  @media (max-width:820px){.pitch-layout{grid-template-columns:1fr;}}
+  .pitch-wrap{
+    position:relative;width:100%;aspect-ratio:68/100;border-radius:14px;overflow:hidden;
+    border:2px solid rgba(255,255,255,.14);
+    background:
+      repeating-linear-gradient(0deg, var(--pitch-mid) 0 9%, var(--pitch-light) 9% 18%);
+    box-shadow:var(--shadow);
+  }
+  .pitch-svg{position:absolute;inset:0;width:100%;height:100%;}
+  .slot{
+    position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:3px;
+    cursor:pointer;user-select:none;width:70px;
+  }
+  .slot .token{
+    width:42px;height:42px;border-radius:50%;background:var(--ink-2);border:2px dashed var(--chalk-dim);
+    display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;
+    font-weight:700;font-size:14px;color:var(--chalk-dim);transition:.12s ease;
+  }
+  .slot.filled .token{
+    border-style:solid;border-color:var(--gold);background:var(--gold);color:var(--ink);
+  }
+  .slot:hover .token{border-color:var(--gold);}
+  .slot.active .token{box-shadow:0 0 0 4px rgba(227,178,60,.35);}
+  .slot .slot-label{
+    font-size:10.5px;color:rgba(238,243,234,.85);background:rgba(12,23,18,.55);padding:1px 6px;
+    border-radius:4px;font-family:'JetBrains Mono',monospace;letter-spacing:.03em;
+  }
+  .slot .slot-name{
+    font-size:10.5px;color:#fff;max-width:70px;text-align:center;line-height:1.2;
+    text-shadow:0 1px 3px rgba(0,0,0,.8);
+  }
+  .side-panel .card{margin-bottom:14px;}
+  .bench-list{display:flex;flex-direction:column;gap:8px;max-height:340px;overflow:auto;}
+  .bench-chip{
+    display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;background:var(--ink);
+    border:1px solid var(--line);font-size:13px;cursor:grab;
+  }
+  .bench-chip:hover{border-color:var(--gold);}
+  .picker-panel{border:1px solid var(--gold);}
+  .picker-list{display:flex;flex-direction:column;gap:6px;max-height:260px;overflow:auto;}
+  .picker-item{
+    display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;
+    border-radius:7px;background:var(--ink);border:1px solid var(--line);font-size:13px;
+  }
+  .picker-item button{background:transparent;border:none;color:var(--gold);font-size:12.5px;font-weight:600;}
+  .picker-item button:hover{text-decoration:underline;}
+  .picker-empty{color:var(--chalk-dim);font-size:12.5px;padding:6px 2px;}
+
+  form.inline{display:flex;flex-direction:column;gap:12px;}
+  .row-2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .del-x{background:transparent;border:none;color:var(--chalk-dim);font-size:16px;padding:2px 6px;border-radius:5px;}
+  .del-x:hover{color:var(--clay);}
+  .hint{color:var(--chalk-dim);font-size:12px;line-height:1.5;margin-top:4px;}
+  .kv{display:flex;justify-content:space-between;font-size:13px;padding:6px 0;border-bottom:1px solid var(--line);}
+  .kv:last-child{border-bottom:none;}
+  .kv span:first-child{color:var(--chalk-dim);}
+  .storage-note{
+    font-size:11.5px;color:var(--chalk-dim);text-align:center;padding:8px 16px;background:var(--ink-2);
+    border-top:1px solid var(--line);
+  }
+  .toast{
+    position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--ink-2);
+    border:1px solid var(--gold);color:var(--chalk);padding:10px 18px;border-radius:8px;font-size:13px;
+    box-shadow:var(--shadow);z-index:200;opacity:0;pointer-events:none;transition:opacity .2s ease;
+  }
+  .toast.show{opacity:1;}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ============ Fachdaten ============ */
+  var POSITIONS = {
+    TW:"Torwart", IV:"Innenverteidiger", LV:"Linksverteidiger", RV:"Rechtsverteidiger",
+    DM:"Defensives Mittelfeld", ZM:"Zentrales Mittelfeld", OM:"Offensives Mittelfeld",
+    LM:"Linkes Mittelfeld", RM:"Rechtes Mittelfeld", LA:"Linksaußen", RA:"Rechtsaußen", MS:"Mittelstürmer"
+  };
+  var CLUB_COLORS = ["#b8434f","#e3b23c","#2f6f4e","#3f6fa8","#7a4fb0","#c46a2e","#2c9aa3","#8a8f98"];
+
+  var FORMATIONS = {
+    "4-4-2":[
+      {id:"gk",label:"TW",x:50,y:92},
+      {id:"lv",label:"LV",x:12,y:74},{id:"iv1",label:"IV",x:36,y:78},{id:"iv2",label:"IV",x:64,y:78},{id:"rv",label:"RV",x:88,y:74},
+      {id:"lm",label:"LM",x:12,y:48},{id:"zm1",label:"ZM",x:36,y:52},{id:"zm2",label:"ZM",x:64,y:52},{id:"rm",label:"RM",x:88,y:48},
+      {id:"st1",label:"MS",x:36,y:20},{id:"st2",label:"MS",x:64,y:20}
+    ],
+    "4-3-3":[
+      {id:"gk",label:"TW",x:50,y:92},
+      {id:"lv",label:"LV",x:12,y:74},{id:"iv1",label:"IV",x:36,y:78},{id:"iv2",label:"IV",x:64,y:78},{id:"rv",label:"RV",x:88,y:74},
+      {id:"zm1",label:"ZM",x:28,y:52},{id:"zm2",label:"ZM",x:50,y:56},{id:"zm3",label:"ZM",x:72,y:52},
+      {id:"la",label:"LA",x:14,y:20},{id:"ms",label:"MS",x:50,y:15},{id:"ra",label:"RA",x:86,y:20}
+    ],
+    "3-5-2":[
+      {id:"gk",label:"TW",x:50,y:92},
+      {id:"iv1",label:"IV",x:26,y:78},{id:"iv2",label:"IV",x:50,y:80},{id:"iv3",label:"IV",x:74,y:78},
+      {id:"lm",label:"LM",x:8,y:50},{id:"zm1",label:"ZM",x:32,y:55},{id:"dm",label:"DM",x:50,y:60},{id:"zm2",label:"ZM",x:68,y:55},{id:"rm",label:"RM",x:92,y:50},
+      {id:"st1",label:"MS",x:38,y:20},{id:"st2",label:"MS",x:62,y:20}
+    ],
+    "4-2-3-1":[
+      {id:"gk",label:"TW",x:50,y:92},
+      {id:"lv",label:"LV",x:12,y:78},{id:"iv1",label:"IV",x:36,y:80},{id:"iv2",label:"IV",x:64,y:80},{id:"rv",label:"RV",x:88,y:78},
+      {id:"dm1",label:"DM",x:36,y:60},{id:"dm2",label:"DM",x:64,y:60},
+      {id:"lm",label:"LM",x:14,y:36},{id:"om",label:"OM",x:50,y:33},{id:"rm",label:"RM",x:86,y:36},
+      {id:"st",label:"MS",x:50,y:14}
+    ],
+    "5-3-2":[
+      {id:"gk",label:"TW",x:50,y:92},
+      {id:"lv",label:"LV",x:8,y:70},{id:"iv1",label:"IV",x:30,y:78},{id:"iv2",label:"IV",x:50,y:80},{id:"iv3",label:"IV",x:70,y:78},{id:"rv",label:"RV",x:92,y:70},
+      {id:"zm1",label:"ZM",x:30,y:50},{id:"zm2",label:"ZM",x:50,y:53},{id:"zm3",label:"ZM",x:70,y:50},
+      {id:"st1",label:"MS",x:38,y:20},{id:"st2",label:"MS",x:62,y:20}
+    ]
+  };
+
+  /* ============ Speicher ============ */
+  var hasWindowStorage = typeof window.storage !== "undefined" && window.storage;
+  var memoryFallback = { value: null };
+  var STORE_KEY = "kadermeister-data";
+
+  function uid(){ return Math.random().toString(36).slice(2,10) + Date.now().toString(36).slice(-4); }
+
+  function defaultState(){
+    return { vms: [], clubs: [] };
+  }
+
+  var state = defaultState();
+  var session = { vmId:null, clubId:null, tab:"kader", activeSlot:null };
+
+  function persist(){
+    var json = JSON.stringify(state);
+    if(hasWindowStorage){
+      window.storage.set(STORE_KEY, json, false).catch(function(){ showToast("Speichern fehlgeschlagen."); });
+    } else {
+      memoryFallback.value = json;
+    }
+  }
+
+  function loadState(cb){
+    if(hasWindowStorage){
+      window.storage.get(STORE_KEY, false).then(function(res){
+        if(res && res.value){
+          try { state = JSON.parse(res.value); } catch(e){ state = defaultState(); }
+        }
+        cb();
+      }).catch(function(){ cb(); });
+    } else {
+      if(memoryFallback.value){
+        try { state = JSON.parse(memoryFallback.value); } catch(e){ state = defaultState(); }
+      }
+      cb();
+    }
+  }
+
+  function showToast(msg){
+    var t = document.getElementById("toast");
+    t.textContent = msg;
+    t.classList.add("show");
+    clearTimeout(showToast._h);
+    showToast._h = setTimeout(function(){ t.classList.remove("show"); }, 2200);
+  }
+
+  /* ============ Helpers ============ */
+  function currentVm(){ return state.vms.find(function(v){ return v.id===session.vmId; }); }
+  function currentClub(){ return state.clubs.find(function(c){ return c.id===session.clubId; }); }
+  function vmClubs(vmId){ return state.clubs.filter(function(c){ return c.vmId===vmId; }); }
+  function esc(s){ var d=document.createElement("div"); d.textContent = s==null?"":String(s); return d.innerHTML; }
+
+  /* ============ Render root ============ */
+  var root = document.getElementById("app");
+
+  function render(){
+    root.innerHTML = "";
+    if(!session.vmId){
+      root.appendChild(renderAuth());
+    } else if(!session.clubId){
+      root.appendChild(renderTopbar());
+      root.appendChild(renderDashboard());
+      root.appendChild(renderStorageNote());
+    } else {
+      root.appendChild(renderTopbar());
+      root.appendChild(renderClubStrip());
+      root.appendChild(renderTabs());
+      var work = document.createElement("main");
+      work.appendChild(renderWorkarea());
+      root.appendChild(work);
+      root.appendChild(renderStorageNote());
+    }
+  }
+
+  function renderStorageNote(){
+    var div = document.createElement("div");
+    div.className = "storage-note";
+    div.textContent = hasWindowStorage
+      ? "Daten werden automatisch gespeichert."
+      : "Hinweis: Diese Sitzung läuft ohne dauerhaften Speicher – Daten gehen beim Neuladen der Seite verloren.";
+    return div;
+  }
+
+  /* ============ Topbar ============ */
+  function renderTopbar(){
+    var bar = document.createElement("div");
+    bar.className = "topbar";
+    var vm = currentVm();
+    bar.innerHTML =
+      '<div class="brand"><div class="mark">KM</div><div class="title">Kadermeister</div></div>' +
+      '<div class="topbar-right">' +
+        (session.clubId ? '<button class="btn btn-small" id="btnSwitchClub">Vereine wechseln</button>' : '') +
+        '<button class="btn btn-small" id="btnExport" title="Alle Daten als Datei herunterladen">⬇ Sichern</button>' +
+        '<button class="btn btn-small" id="btnImport" title="Zuvor gesicherte Datei wieder laden">⬆ Laden</button>' +
+        '<span>Angemeldet als <strong>' + esc(vm ? vm.name : "") + '</strong></span>' +
+        '<button class="btn btn-small" id="btnLogout">Abmelden</button>' +
+      '</div>';
+    bar.querySelector("#btnLogout").addEventListener("click", function(){
+      session.vmId=null; session.clubId=null; render();
+    });
+    var sw = bar.querySelector("#btnSwitchClub");
+    if(sw) sw.addEventListener("click", function(){ session.clubId=null; render(); });
+    bar.querySelector("#btnExport").addEventListener("click", exportData);
+    bar.querySelector("#btnImport").addEventListener("click", function(){
+      if(confirm("Beim Laden einer Sicherung werden alle aktuellen Daten in dieser Sitzung ersetzt. Fortfahren?")){
+        triggerImport();
+      }
+    });
+    return bar;
+  }
+
+  /* ============ Auth ============ */
+  function renderAuth(){
+    var wrap = document.createElement("div");
+    wrap.className = "auth-wrap";
+    var mode = renderAuth._mode || "login";
+
+    wrap.innerHTML =
+      '<div class="auth-card">' +
+        '<div class="auth-hero">' +
+          '<div class="mark-lg">KM</div>' +
+          '<h1>Kadermeister</h1>' +
+          '<p>Als Vereinsmanager anmelden, einen Verein gründen,<br>Kader pflegen und Aufstellungen planen.</p>' +
+        '</div>' +
+        '<div class="tabbar">' +
+          '<button data-mode="login" class="' + (mode==="login"?"active":"") + '">Anmelden</button>' +
+          '<button data-mode="register" class="' + (mode==="register"?"active":"") + '">Als VM registrieren</button>' +
+        '</div>' +
+        '<div id="authFormHost"></div>' +
+        '<div style="text-align:center;margin-top:16px;">' +
+          '<button type="button" class="btn btn-ghost btn-small" id="btnAuthImport">⬆ Gesicherte Daten laden</button>' +
+        '</div>' +
+      '</div>';
+
+    wrap.querySelectorAll(".tabbar button").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        renderAuth._mode = btn.getAttribute("data-mode");
+        render();
+      });
+    });
+
+    var host = wrap.querySelector("#authFormHost");
+    host.appendChild(mode==="login" ? loginForm() : registerForm());
+
+    wrap.querySelector("#btnAuthImport").addEventListener("click", function(){
+      if(confirm("Beim Laden einer Sicherung werden alle aktuellen Daten in dieser Sitzung ersetzt. Fortfahren?")){
+        triggerImport();
+      }
+    });
+    return wrap;
+  }
+
+  function loginForm(){
+    var f = document.createElement("form");
+    f.className = "inline";
+    f.innerHTML =
+      '<div class="field"><label>Benutzername</label><input type="text" id="loginUser" autocomplete="username" required></div>' +
+      '<div class="field"><label>Passwort</label><input type="password" id="loginPass" autocomplete="current-password" required></div>' +
+      '<div class="form-msg" id="loginMsg"></div>' +
+      '<button type="submit" class="btn btn-primary">Anmelden</button>';
+    f.addEventListener("submit", function(e){
+      e.preventDefault();
+      var user = f.querySelector("#loginUser").value.trim();
+      var pass = f.querySelector("#loginPass").value;
+      var msg = f.querySelector("#loginMsg");
+      var vm = state.vms.find(function(v){ return v.username.toLowerCase()===user.toLowerCase(); });
+      if(!vm || vm.password !== pass){
+        msg.textContent = "Benutzername oder Passwort ist falsch.";
+        msg.className = "form-msg";
+        return;
+      }
+      session.vmId = vm.id;
+      session.clubId = null;
+      render();
+    });
+    return f;
+  }
+
+  function registerForm(){
+    var f = document.createElement("form");
+    f.className = "inline";
+    f.innerHTML =
+      '<div class="field"><label>Anzeigename</label><input type="text" id="regName" placeholder="z. B. Julia Berger" required></div>' +
+      '<div class="field"><label>Benutzername</label><input type="text" id="regUser" required></div>' +
+      '<div class="field"><label>Passwort</label><input type="password" id="regPass" required></div>' +
+      '<div class="form-msg" id="regMsg"></div>' +
+      '<button type="submit" class="btn btn-primary">Als Vereinsmanager registrieren</button>';
+    f.addEventListener("submit", function(e){
+      e.preventDefault();
+      var name = f.querySelector("#regName").value.trim();
+      var user = f.querySelector("#regUser").value.trim();
+      var pass = f.querySelector("#regPass").value;
+      var msg = f.querySelector("#regMsg");
+      if(!name || !user || !pass){
+        msg.textContent = "Bitte alle Felder ausfüllen."; return;
+      }
+      if(state.vms.some(function(v){ return v.username.toLowerCase()===user.toLowerCase(); })){
+        msg.textContent = "Dieser Benutzername ist bereits vergeben."; return;
+      }
+      var vm = { id: uid(), name: name, username: user, password: pass };
+      state.vms.push(vm);
+      persist();
+      session.vmId = vm.id;
+      session.clubId = null;
+      render();
+      showToast("Willkommen, " + name + "!");
+    });
+    return f;
+  }
+
+  /* ============ Dashboard ============ */
+  function renderDashboard(){
+    var page = document.createElement("div");
+    page.className = "page";
+    var clubs = vmClubs(session.vmId);
+
+    page.innerHTML =
+      '<div class="page-head"><div><h1>Meine Vereine</h1><p>Wähle einen Verein oder gründe einen neuen.</p></div></div>' +
+      '<div class="club-grid" id="clubGrid"></div>';
+
+    var grid = page.querySelector("#clubGrid");
+    clubs.forEach(function(c){
+      var card = document.createElement("button");
+      card.className = "club-card";
+      card.innerHTML =
+        '<div class="crest" style="background:' + esc(c.farbe) + '">' + esc(c.kuerzel) + '</div>' +
+        '<div class="name">' + esc(c.name) + '</div>' +
+        '<div class="meta">' + esc(c.ort || "–") + (c.jahr ? " · gegr. " + esc(c.jahr) : "") + '</div>' +
+        '<div class="count">⚽ ' + c.players.length + ' Spieler im Kader</div>';
+      card.addEventListener("click", function(){
+        session.clubId = c.id; session.tab = "kader"; session.activeSlot=null; render();
+      });
+      grid.appendChild(card);
+    });
+
+    var addCard = document.createElement("button");
+    addCard.className = "club-card add";
+    addCard.innerHTML = '<div class="plus">+</div><div>Neuen Verein gründen</div>';
+    addCard.addEventListener("click", openCreateClubModal);
+    grid.appendChild(addCard);
+
+    return page;
+  }
+
+  function openCreateClubModal(){
+    var backdrop = document.createElement("div");
+    backdrop.className = "modal-backdrop";
+    var selectedColor = CLUB_COLORS[0];
+    backdrop.innerHTML =
+      '<div class="modal">' +
+        '<h2>Verein gründen</h2>' +
+        '<p class="sub">Lege die Grunddaten deines neuen Vereins fest.</p>' +
+        '<form class="inline" id="clubForm">' +
+          '<div class="field"><label>Vereinsname</label><input type="text" id="cName" placeholder="z. B. SV Grün-Weiß" required></div>' +
+          '<div class="row-2">' +
+            '<div class="field"><label>Ort</label><input type="text" id="cOrt" placeholder="z. B. Musterstadt"></div>' +
+            '<div class="field"><label>Gegründet</label><input type="number" id="cJahr" placeholder="z. B. 1998" min="1850" max="2100"></div>' +
+          '</div>' +
+          '<div class="field"><label>Kürzel (Wappen, max. 3 Zeichen)</label><input type="text" id="cKuerzel" maxlength="3" placeholder="z. B. SGW"></div>' +
+          '<div class="field"><label>Vereinsfarbe</label><div class="color-row" id="colorRow"></div></div>' +
+          '<div class="form-msg" id="clubMsg"></div>' +
+          '<div class="modal-actions">' +
+            '<button type="button" class="btn" id="cancelClub">Abbrechen</button>' +
+            '<button type="submit" class="btn btn-primary">Verein gründen</button>' +
+          '</div>' +
+        '</form>' +
+      '</div>';
+    document.body.appendChild(backdrop);
+
+    var colorRow = backdrop.querySelector("#colorRow");
+    CLUB_COLORS.forEach(function(col, i){
+      var sw = document.createElement("div");
+      sw.className = "swatch" + (i===0 ? " selected" : "");
+      sw.style.background = col;
+      sw.addEventListener("click", function(){
+        selectedColor = col;
+        colorRow.querySelectorAll(".swatch").forEach(function(s){ s.classList.remove("selected"); });
+        sw.classList.add("selected");
+      });
+      colorRow.appendChild(sw);
+    });
+
+    backdrop.querySelector("#cancelClub").addEventListener("click", function(){ backdrop.remove(); });
+    backdrop.addEventListener("click", function(e){ if(e.target===backdrop) backdrop.remove(); });
+
+    backdrop.querySelector("#clubForm").addEventListener("submit", function(e){
+      e.preventDefault();
+      var name = backdrop.querySelector("#cName").value.trim();
+      var ort = backdrop.querySelector("#cOrt").value.trim();
+      var jahr = backdrop.querySelector("#cJahr").value.trim();
+      var kuerzel = backdrop.querySelector("#cKuerzel").value.trim().toUpperCase() || name.slice(0,3).toUpperCase();
+      var msg = backdrop.querySelector("#clubMsg");
+      if(!name){ msg.textContent = "Bitte einen Vereinsnamen angeben."; return; }
+      var club = {
+        id: uid(), vmId: session.vmId, name: name, ort: ort, jahr: jahr,
+        farbe: selectedColor, kuerzel: kuerzel, players: [],
+        formation: { template: "4-4-2", slots: {} }
+      };
+      state.clubs.push(club);
+      persist();
+      backdrop.remove();
+      session.clubId = club.id;
+      session.tab = "kader";
+      render();
+      showToast("Verein „" + name + "“ gegründet!");
+    });
+  }
+
+  /* ============ Club strip + tabs ============ */
+  function renderClubStrip(){
+    var club = currentClub();
+    var strip = document.createElement("div");
+    strip.className = "club-strip";
+    strip.innerHTML =
+      '<div class="crest" style="background:' + esc(club.farbe) + '">' + esc(club.kuerzel) + '</div>' +
+      '<div><div class="name display" style="font-size:18px;">' + esc(club.name) + '</div>' +
+      '<div class="meta">' + esc(club.ort||"–") + (club.jahr ? " · gegr. " + esc(club.jahr) : "") + " · " + club.players.length + " Spieler</div></div>";
+    return strip;
+  }
+
+  function renderTabs(){
+    var tabs = document.createElement("div");
+    tabs.className = "tabs";
+    [["kader","Kader"],["aufstellung","Aufstellung"],["verein","Verein"]].forEach(function(t){
+      var b = document.createElement("button");
+      b.textContent = t[1];
+      if(session.tab===t[0]) b.className = "active";
+      b.addEventListener("click", function(){ session.tab = t[0]; session.activeSlot=null; render(); });
+      tabs.appendChild(b);
+    });
+    return tabs;
+  }
+
+  function renderWorkarea(){
+    var wrap = document.createElement("div");
+    wrap.className = "workarea";
+    if(session.tab==="kader") wrap.appendChild(renderKader());
+    else if(session.tab==="aufstellung") wrap.appendChild(renderAufstellung());
+    else wrap.appendChild(renderVereinSettings());
+    return wrap;
+  }
+
+  /* ============ Kader tab ============ */
+  function renderKader(){
+    var club = currentClub();
+    var wrap = document.createElement("div");
+    wrap.className = "kader-layout";
+
+    var formCard = document.createElement("div");
+    formCard.className = "card";
+    formCard.innerHTML = '<h3>Spieler hinzufügen</h3>';
+    var form = document.createElement("form");
+    form.className = "inline";
+    var options = Object.keys(POSITIONS).map(function(k){ return '<option value="'+k+'">'+k+' – '+POSITIONS[k]+'</option>'; }).join("");
+    form.innerHTML =
+      '<div class="field"><label>Name</label><input type="text" id="pName" placeholder="Vor- und Nachname" required></div>' +
+      '<div class="row-2">' +
+        '<div class="field"><label>Rückennummer</label><input type="number" id="pNum" min="1" max="99" placeholder="z. B. 9"></div>' +
+        '<div class="field"><label>Position</label><select id="pPos">' + options + '</select></div>' +
+      '</div>' +
+      '<div class="form-msg" id="pMsg"></div>' +
+      '<button type="submit" class="btn btn-primary">Zum Kader hinzufügen</button>';
+    formCard.appendChild(form);
+
+    form.addEventListener("submit", function(e){
+      e.preventDefault();
+      var name = form.querySelector("#pName").value.trim();
+      var num = form.querySelector("#pNum").value;
+      var pos = form.querySelector("#pPos").value;
+      var msg = form.querySelector("#pMsg");
+      if(!name){ msg.textContent = "Bitte einen Namen angeben."; return; }
+      club.players.push({ id: uid(), name: name, nummer: num ? Number(num) : null, position: pos });
+      persist();
+      form.reset();
+      render();
+      showToast(name + " wurde zum Kader hinzugefügt.");
+    });
+
+    var listCard = document.createElement("div");
+    listCard.className = "card";
+    listCard.innerHTML = '<h3>Kader (' + club.players.length + ')</h3>';
+
+    if(club.players.length===0){
+      var empty = document.createElement("div");
+      empty.className = "empty-note";
+      empty.textContent = "Noch keine Spieler im Kader. Füge links den ersten Spieler hinzu.";
+      listCard.appendChild(empty);
+    } else {
+      var table = document.createElement("table");
+      table.className = "player-table";
+      table.innerHTML =
+        '<thead><tr><th>#</th><th>Name</th><th>Position</th><th></th></tr></thead><tbody></tbody>';
+      var tbody = table.querySelector("tbody");
+      club.players.slice().sort(function(a,b){ return (a.nummer||99)-(b.nummer||99); }).forEach(function(p){
+        var tr = document.createElement("tr");
+        tr.innerHTML =
+          '<td><span class="num-badge">' + (p.nummer!=null ? p.nummer : "–") + '</span></td>' +
+          '<td>' + esc(p.name) + '</td>' +
+          '<td><span class="pos-badge">' + p.position + '</span> <span style="color:var(--chalk-dim);font-size:12px;">' + POSITIONS[p.position] + '</span></td>' +
+          '<td style="text-align:right;"><button class="del-x" title="Spieler entfernen">✕</button></td>';
+        tr.querySelector(".del-x").addEventListener("click", function(){
+          club.players = club.players.filter(function(pl){ return pl.id!==p.id; });
+          Object.keys(club.formation.slots).forEach(function(slotId){
+            if(club.formation.slots[slotId]===p.id) delete club.formation.slots[slotId];
+          });
+          persist();
+          render();
+          showToast(p.name + " wurde entfernt.");
+        });
+        tbody.appendChild(tr);
+      });
+      listCard.appendChild(table);
+    }
+
+    wrap.appendChild(formCard);
+    wrap.appendChild(listCard);
+    return wrap;
+  }
+
+  /* ============ Aufstellung tab ============ */
+  function renderAufstellung(){
+    var club = currentClub();
+    var wrap = document.createElement("div");
+
+    var toolbar = document.createElement("div");
+    toolbar.className = "formation-toolbar";
+    var opts = Object.keys(FORMATIONS).map(function(k){
+      return '<option value="'+k+'"' + (club.formation.template===k?" selected":"") + '>' + k + '</option>';
+    }).join("");
+    toolbar.innerHTML =
+      '<div class="field"><label>Formation</label><select id="formationSelect">' + opts + '</select></div>' +
+      '<div class="hint" style="margin-top:18px;">Klicke einen Platz auf dem Feld an, um einen Spieler zuzuweisen.</div>';
+    toolbar.querySelector("#formationSelect").addEventListener("change", function(e){
+      club.formation.template = e.target.value;
+      club.formation.slots = {};
+      session.activeSlot = null;
+      persist();
+      render();
+    });
+
+    var layout = document.createElement("div");
+    layout.className = "pitch-layout";
+
+    var pitchWrap = document.createElement("div");
+    pitchWrap.className = "pitch-wrap";
+    pitchWrap.appendChild(pitchMarkingsSvg());
+
+    var slots = FORMATIONS[club.formation.template];
+    slots.forEach(function(slot){
+      var playerId = club.formation.slots[slot.id];
+      var player = playerId ? club.players.find(function(p){ return p.id===playerId; }) : null;
+      var el = document.createElement("div");
+      el.className = "slot" + (player ? " filled" : "") + (session.activeSlot===slot.id ? " active" : "");
+      el.style.left = slot.x + "%";
+      el.style.top = slot.y + "%";
+      el.innerHTML =
+        '<div class="token">' + (player ? (player.nummer!=null?player.nummer:"•") : slot.label) + '</div>' +
+        '<div class="slot-label">' + slot.label + '</div>' +
+        (player ? '<div class="slot-name">' + esc(player.name.split(" ").pop()) + '</div>' : '');
+      el.addEventListener("click", function(){
+        session.activeSlot = session.activeSlot===slot.id ? null : slot.id;
+        render();
+      });
+      pitchWrap.appendChild(el);
+    });
+
+    layout.appendChild(pitchWrap);
+
+    var sidePanel = document.createElement("div");
+    sidePanel.className = "side-panel";
+
+    if(session.activeSlot){
+      var activeDef = slots.find(function(s){ return s.id===session.activeSlot; });
+      var pickerCard = document.createElement("div");
+      pickerCard.className = "card picker-panel";
+      pickerCard.innerHTML = '<h3>Platz „' + activeDef.label + '“ besetzen</h3>';
+      var assignedId = club.formation.slots[session.activeSlot];
+
+      var pickList = document.createElement("div");
+      pickList.className = "picker-list";
+      var assignedElsewhere = Object.values(club.formation.slots);
+      var available = club.players.filter(function(p){ return !assignedElsewhere.includes(p.id) || p.id===assignedId; });
+
+      if(available.length===0){
+        pickList.innerHTML = '<div class="picker-empty">Alle Spieler sind bereits aufgestellt oder der Kader ist leer.</div>';
+      } else {
+        available
+          .slice()
+          .sort(function(a,b){ return (a.position===activeDef.label?-1:0) - (b.position===activeDef.label?-1:0); })
+          .forEach(function(p){
+          var item = document.createElement("div");
+          item.className = "picker-item";
+          var match = p.position===activeDef.label ? ' <span style="color:var(--gold);">·passt·</span>' : "";
+          item.innerHTML =
+            '<span>' + (p.nummer!=null?('#'+p.nummer+' '):'') + esc(p.name) + ' <span class="pos-badge" style="margin-left:4px;">' + p.position + '</span>' + match + '</span>';
+          var btn = document.createElement("button");
+          btn.textContent = p.id===assignedId ? "Zugewiesen" : "Zuweisen";
+          btn.disabled = p.id===assignedId;
+          btn.addEventListener("click", function(){
+            club.formation.slots[session.activeSlot] = p.id;
+            persist();
+            render();
+          });
+          item.appendChild(btn);
+          pickList.appendChild(item);
+        });
+      }
+      pickerCard.appendChild(pickList);
+
+      if(assignedId){
+        var removeBtn = document.createElement("button");
+        removeBtn.className = "btn btn-danger btn-small";
+        removeBtn.style.marginTop = "12px";
+        removeBtn.textContent = "Platz freimachen";
+        removeBtn.addEventListener("click", function(){
+          delete club.formation.slots[session.activeSlot];
+          persist();
+          render();
+        });
+        pickerCard.appendChild(removeBtn);
+      }
+      sidePanel.appendChild(pickerCard);
+    }
+
+    var benchIds = Object.values(club.formation.slots);
+    var bench = club.players.filter(function(p){ return !benchIds.includes(p.id); });
+    var benchCard = document.createElement("div");
+    benchCard.className = "card";
+    benchCard.innerHTML = '<h3>Bank (' + bench.length + ')</h3>';
+    if(bench.length===0){
+      benchCard.innerHTML += '<div class="picker-empty">Alle Spieler sind aufgestellt.</div>';
+    } else {
+      var benchList = document.createElement("div");
+      benchList.className = "bench-list";
+      bench.forEach(function(p){
+        var chip = document.createElement("div");
+        chip.className = "bench-chip";
+        chip.innerHTML = '<span class="pos-badge">' + p.position + '</span> ' + (p.nummer!=null?('#'+p.nummer+' '):'') + esc(p.name);
+        benchCard.querySelector; // noop
+        benchList.appendChild(chip);
+      });
+      benchCard.appendChild(benchList);
+    }
+    sidePanel.appendChild(benchCard);
+
+    layout.appendChild(sidePanel);
+
+    wrap.appendChild(toolbar);
+    wrap.appendChild(layout);
+    return wrap;
+  }
+
+  function pitchMarkingsSvg(){
+    var svgNS = "http://www.w3.org/2000/svg";
+    var svg = document.createElementNS(svgNS, "svg");
+    svg.setAttribute("class", "pitch-svg");
+    svg.setAttribute("viewBox", "0 0 100 100");
+    svg.setAttribute("preserveAspectRatio", "none");
+    var stroke = "rgba(255,255,255,.55)";
+    var lines = [
+      '<rect x="2" y="2" width="96" height="96" fill="none" stroke="'+stroke+'" stroke-width="0.4" vector-effect="non-scaling-stroke"/>',
+      '<line x1="2" y1="50" x2="98" y2="50" stroke="'+stroke+'" stroke-width="0.4"/>',
+      '<circle cx="50" cy="50" r="9" fill="none" stroke="'+stroke+'" stroke-width="0.4"/>',
+      '<circle cx="50" cy="50" r="0.6" fill="'+stroke+'"/>',
+      '<rect x="20" y="2" width="60" height="14" fill="none" stroke="'+stroke+'" stroke-width="0.4"/>',
+      '<rect x="35" y="2" width="30" height="6" fill="none" stroke="'+stroke+'" stroke-width="0.4"/>',
+      '<path d="M 38 16 A 9 9 0 0 0 62 16" fill="none" stroke="'+stroke+'" stroke-width="0.4"/>',
+      '<rect x="20" y="84" width="60" height="14" fill="none" stroke="'+stroke+'" stroke-width="0.4"/>',
+      '<rect x="35" y="92" width="30" height="6" fill="none" stroke="'+stroke+'" stroke-width="0.4"/>',
+      '<path d="M 38 84 A 9 9 0 0 1 62 84" fill="none" stroke="'+stroke+'" stroke-width="0.4"/>'
+    ];
+    svg.innerHTML = lines.join("");
+    return svg;
+  }
+
+  /* ============ Verein settings tab ============ */
+  function renderVereinSettings(){
+    var club = currentClub();
+    var wrap = document.createElement("div");
+    wrap.className = "kader-layout";
+
+    var infoCard = document.createElement("div");
+    infoCard.className = "card";
+    infoCard.innerHTML = '<h3>Vereinsdaten bearbeiten</h3>';
+    var form = document.createElement("form");
+    form.className = "inline";
+    form.innerHTML =
+      '<div class="field"><label>Vereinsname</label><input type="text" id="eName" value="' + esc(club.name) + '" required></div>' +
+      '<div class="row-2">' +
+        '<div class="field"><label>Ort</label><input type="text" id="eOrt" value="' + esc(club.ort||"") + '"></div>' +
+        '<div class="field"><label>Gegründet</label><input type="number" id="eJahr" value="' + esc(club.jahr||"") + '"></div>' +
+      '</div>' +
+      '<div class="field"><label>Kürzel</label><input type="text" id="eKuerzel" maxlength="3" value="' + esc(club.kuerzel) + '"></div>' +
+      '<div class="field"><label>Vereinsfarbe</label><div class="color-row" id="eColorRow"></div></div>' +
+      '<button type="submit" class="btn btn-primary">Änderungen speichern</button>';
+    infoCard.appendChild(form);
+
+    var colorRow = form.querySelector("#eColorRow");
+    var selColor = club.farbe;
+    CLUB_COLORS.forEach(function(col){
+      var sw = document.createElement("div");
+      sw.className = "swatch" + (col===club.farbe ? " selected" : "");
+      sw.style.background = col;
+      sw.addEventListener("click", function(){
+        selColor = col;
+        colorRow.querySelectorAll(".swatch").forEach(function(s){ s.classList.remove("selected"); });
+        sw.classList.add("selected");
+      });
+      colorRow.appendChild(sw);
+    });
+
+    form.addEventListener("submit", function(e){
+      e.preventDefault();
+      club.name = form.querySelector("#eName").value.trim() || club.name;
+      club.ort = form.querySelector("#eOrt").value.trim();
+      club.jahr = form.querySelector("#eJahr").value.trim();
+      club.kuerzel = (form.querySelector("#eKuerzel").value.trim() || club.kuerzel).toUpperCase();
+      club.farbe = selColor;
+      persist();
+      render();
+      showToast("Vereinsdaten aktualisiert.");
+    });
+
+    var dangerCard = document.createElement("div");
+    dangerCard.className = "card";
+    dangerCard.innerHTML =
+      '<h3>Überblick</h3>' +
+      '<div class="kv"><span>Spieler im Kader</span><span>' + club.players.length + '</span></div>' +
+      '<div class="kv"><span>Aktuelle Formation</span><span>' + club.formation.template + '</span></div>' +
+      '<div class="kv"><span>Aufgestellte Spieler</span><span>' + Object.keys(club.formation.slots).length + ' / ' + FORMATIONS[club.formation.template].length + '</span></div>' +
+      '<div style="margin-top:18px;"><button class="btn btn-danger" id="deleteClubBtn">Verein auflösen</button></div>';
+    dangerCard.querySelector("#deleteClubBtn").addEventListener("click", function(){
+      if(confirm('„' + club.name + '“ wirklich auflösen? Kader und Aufstellung gehen verloren.')){
+        state.clubs = state.clubs.filter(function(c){ return c.id!==club.id; });
+        persist();
+        session.clubId = null;
+        render();
+        showToast("Verein aufgelöst.");
+      }
+    });
+
+    wrap.appendChild(infoCard);
+    wrap.appendChild(dangerCard);
+    return wrap;
+  }
+
+  /* ============ Export / Import ============ */
+  function exportData(){
+    var blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    var ts = new Date().toISOString().slice(0,10);
+    a.href = url;
+    a.download = "kadermeister-daten-" + ts + ".json";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+    showToast("Daten wurden heruntergeladen.");
+  }
+
+  function importDataFromFile(file){
+    var reader = new FileReader();
+    reader.onload = function(e){
+      try {
+        var parsed = JSON.parse(e.target.result);
+        if(!parsed || !Array.isArray(parsed.vms) || !Array.isArray(parsed.clubs)){
+          throw new Error("invalid format");
+        }
+        state = parsed;
+        ensureSeedUser();
+        persist();
+        session.vmId = null;
+        session.clubId = null;
+        render();
+        showToast("Daten wurden erfolgreich importiert.");
+      } catch(err){
+        showToast("Datei konnte nicht gelesen werden – ungültiges Format.");
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  function triggerImport(){
+    var input = document.createElement("input");
+    input.type = "file";
+    input.accept = "application/json";
+    input.addEventListener("change", function(){
+      if(input.files && input.files[0]) importDataFromFile(input.files[0]);
+    });
+    input.click();
+  }
+
+  /* ============ Test-Zugang ============ */
+  function ensureSeedUser(){
+    var exists = state.vms.some(function(v){ return v.username.toLowerCase()==="karl heinz"; });
+    if(!exists){
+      state.vms.push({ id: uid(), name: "Karl Heinz", username: "Karl Heinz", password: "1212x" });
+      persist();
+    }
+  }
+
+  /* ============ Start ============ */
+  loadState(function(){
+    ensureSeedUser();
+    render();
+  });
+})();
+</script>
+</body>
+</html>
