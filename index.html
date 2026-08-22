@@ -677,7 +677,7 @@
   function renderTabs(){
     var tabs = document.createElement("div");
     tabs.className = "tabs";
-    [["verein","Info"],["kader","Kader"],["aufstellung","Aufstellung"],["erfolge","Erfolge & Ziele"]].forEach(function(t){
+    [["verein","Info"],["kader","Kader"],["aufstellung","Aufstellung"],["erfolge","Erfolge"],["ziele","Büro"]].forEach(function(t){
       var b = document.createElement("button");
       b.textContent = t[1];
       if(session.tab===t[0]) b.className = "active";
@@ -692,7 +692,8 @@
     wrap.className = "workarea";
     if(session.tab==="kader") wrap.appendChild(renderKader());
     else if(session.tab==="aufstellung") wrap.appendChild(renderAufstellung());
-    else if(session.tab==="erfolge") wrap.appendChild(renderBuero());
+    else if(session.tab==="erfolge") wrap.appendChild(renderErfolge());
+    else if(session.tab==="ziele") wrap.appendChild(renderBuero());
     else wrap.appendChild(renderVereinSettings());
     return wrap;
   }
@@ -1076,7 +1077,6 @@
 
   function renderBuero(){
     var club = currentClub();
-    club.erfolge = club.erfolge || [];
     club.ziele = club.ziele || [];
     club.todos = club.todos || [];
     var wrap = document.createElement("div");
@@ -1087,7 +1087,7 @@
     gamificationCard.innerHTML =
       '<h3>🔒 App-Level-Fortschritt</h3>' +
       '<p style="color:var(--chalk-dim);font-size:13.5px;line-height:1.6;margin:0 0 14px;">' +
-        'Level, Erfahrungspunkte und die virtuelle Vereinswährung werden aus einer separaten App synchronisiert und laufen sonst unabhängig von Todos, Zielen und Erfolgen hier im Büro.' +
+        'Level, Erfahrungspunkte und die virtuelle Vereinswährung werden aus einer separaten App synchronisiert und laufen sonst unabhängig von Aufgaben und Zielen hier im Büro.' +
       '</p>' +
       '<div style="display:flex;align-items:center;gap:14px;padding:14px;border-radius:9px;background:var(--ink);border:1px dashed var(--line);">' +
         '<div style="font-size:24px;">🎮</div>' +
@@ -1115,8 +1115,15 @@
       doneEmoji: "✅", openEmoji: "🎯", doneLabel: "Erreicht", undoLabel: "Zurücksetzen",
       deleteTitle: "Ziel entfernen", deleteToast: "Ziel entfernt."
     });
-    zieleSection.style.marginBottom = "26px";
     wrap.appendChild(zieleSection);
+
+    return wrap;
+  }
+
+  function renderErfolge(){
+    var club = currentClub();
+    club.erfolge = club.erfolge || [];
+    var wrap = document.createElement("div");
 
     wrap.appendChild(renderTrophaeenSection(club));
 
