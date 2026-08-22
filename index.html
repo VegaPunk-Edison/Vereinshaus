@@ -380,6 +380,12 @@
   function currentClub(){ return state.clubs.find(function(c){ return c.id===session.clubId; }); }
   function vmClubs(vmId){ return state.clubs.filter(function(c){ return c.vmId===vmId; }); }
   function esc(s){ var d=document.createElement("div"); d.textContent = s==null?"":String(s); return d.innerHTML; }
+  function crestInner(club){
+    if(club.logo){
+      return '<img src="' + club.logo + '" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;">';
+    }
+    return esc(club.kuerzel);
+  }
 
   /* ============ Render root ============ */
   var root = document.getElementById("app");
@@ -554,7 +560,7 @@
       var card = document.createElement("button");
       card.className = "club-card";
       card.innerHTML =
-        '<div class="crest" style="background:' + esc(c.farbe) + '">' + esc(c.kuerzel) + '</div>' +
+        '<div class="crest" style="background:' + esc(c.farbe) + '">' + crestInner(c) + '</div>' +
         '<div class="name">' + esc(c.name) + '</div>' +
         '<div class="meta">' + esc(c.ort || "–") + (c.jahr ? " · gegr. " + esc(c.jahr) : "") + '</div>' +
         '<div class="count">⚽ ' + c.players.length + ' Spieler im Kader</div>';
@@ -625,6 +631,8 @@
       var club = {
         id: uid(), vmId: session.vmId, name: name, ort: ort, jahr: jahr,
         farbe: selectedColor, kuerzel: kuerzel, players: [],
+        manager: currentVm() ? currentVm().name : "",
+        erfolge: [], ziele: [],
         formation: { template: "4-4-2", slots: {} }
       };
       state.clubs.push(club);
@@ -643,7 +651,7 @@
     var strip = document.createElement("div");
     strip.className = "club-strip";
     strip.innerHTML =
-      '<div class="crest" style="background:' + esc(club.farbe) + '">' + esc(club.kuerzel) + '</div>' +
+      '<div class="crest" style="background:' + esc(club.farbe) + '">' + crestInner(club) + '</div>' +
       '<div><div class="name display" style="font-size:18px;">' + esc(club.name) + '</div>' +
       '<div class="meta">' + esc(club.ort||"–") + (club.jahr ? " · gegr. " + esc(club.jahr) : "") + " · " + club.players.length + " Spieler</div></div>";
     return strip;
@@ -652,7 +660,7 @@
   function renderTabs(){
     var tabs = document.createElement("div");
     tabs.className = "tabs";
-    [["kader","Kader"],["aufstellung","Aufstellung"],["verein","Verein"]].forEach(function(t){
+    [["kader","Kader"],["aufstellung","Aufstellung"],["erfolge","Erfolge & Ziele"],["verein","Verein"]].forEach(function(t){
       var b = document.createElement("button");
       b.textContent = t[1];
       if(session.tab===t[0]) b.className = "active";
@@ -667,6 +675,7 @@
     wrap.className = "workarea";
     if(session.tab==="kader") wrap.appendChild(renderKader());
     else if(session.tab==="aufstellung") wrap.appendChild(renderAufstellung());
+    else if(session.tab==="erfolge") wrap.appendChild(renderErfolge());
     else wrap.appendChild(renderVereinSettings());
     return wrap;
   }
@@ -904,6 +913,157 @@
     return svg;
   }
 
+  /* ============ Erfolge & Ziele tab ============ */
+  function renderErfolge(){
+    var club = currentClub();
+    club.erfolge = club.erfolge || [];
+    club.ziele = club.ziele || [];
+    var wrap = document.createElement("div");
+
+    var erfolgeSection = document.createElement("div");
+    erfolgeSection.className = "kader-layout";
+    erfolgeSection.style.marginBottom = "26px";
+
+    var erfolgFormCard = document.createElement("div");
+    erfolgFormCard.className = "card";
+    erfolgFormCard.innerHTML = '<h3>Vereinserfolg hinzufügen</h3>';
+    var erfolgForm = document.createElement("form");
+    erfolgForm.className = "inline";
+    erfolgForm.innerHTML =
+      '<div class="field"><label>Titel</label><input type="text" id="erTitel" placeholder="z. B. Kreismeister" required></div>' +
+      '<div class="field"><label>Jahr</label><input type="number" id="erJahr" min="1850" max="2100" placeholder="z. B. 2023"></div>' +
+      '<div class="form-msg" id="erMsg"></div>' +
+      '<button type="submit" class="btn btn-primary">Erfolg hinzufügen</button>';
+    erfolgFormCard.appendChild(erfolgForm);
+
+    erfolgForm.addEventListener("submit", function(e){
+      e.preventDefault();
+      var titel = erfolgForm.querySelector("#erTitel").value.trim();
+      var jahr = erfolgForm.querySelector("#erJahr").value.trim();
+      var msg = erfolgForm.querySelector("#erMsg");
+      if(!titel){ msg.textContent = "Bitte einen Titel angeben."; return; }
+      club.erfolge.push({ id: uid(), titel: titel, jahr: jahr ? Number(jahr) : null });
+      persist();
+      render();
+      showToast("Erfolg hinzugefügt.");
+    });
+
+    var erfolge = club.erfolge.slice().sort(function(a,b){ return (b.jahr||0)-(a.jahr||0); });
+    var erfolgListCard = document.createElement("div");
+    erfolgListCard.className = "card";
+    erfolgListCard.innerHTML = '<h3>Vereinserfolge (' + erfolge.length + ')</h3>';
+    if(erfolge.length===0){
+      var emptyE = document.createElement("div");
+      emptyE.className = "empty-note";
+      emptyE.textContent = "Noch keine Erfolge eingetragen.";
+      erfolgListCard.appendChild(emptyE);
+    } else {
+      var erTable = document.createElement("table");
+      erTable.className = "player-table";
+      erTable.innerHTML = '<thead><tr><th>Titel</th><th>Jahr</th><th></th></tr></thead><tbody></tbody>';
+      var erBody = erTable.querySelector("tbody");
+      erfolge.forEach(function(er){
+        var tr = document.createElement("tr");
+        tr.innerHTML =
+          '<td>🏆 ' + esc(er.titel) + '</td>' +
+          '<td>' + (er.jahr!=null ? er.jahr : "–") + '</td>' +
+          '<td style="text-align:right;"><button class="del-x" title="Erfolg entfernen">✕</button></td>';
+        tr.querySelector(".del-x").addEventListener("click", function(){
+          club.erfolge = club.erfolge.filter(function(x){ return x.id!==er.id; });
+          persist();
+          render();
+          showToast("Erfolg entfernt.");
+        });
+        erBody.appendChild(tr);
+      });
+      erfolgListCard.appendChild(erTable);
+    }
+
+    erfolgeSection.appendChild(erfolgFormCard);
+    erfolgeSection.appendChild(erfolgListCard);
+
+    var zieleSection = document.createElement("div");
+    zieleSection.className = "kader-layout";
+
+    var zielFormCard = document.createElement("div");
+    zielFormCard.className = "card";
+    zielFormCard.innerHTML = '<h3>Saisonziel hinzufügen</h3>';
+    var zielForm = document.createElement("form");
+    zielForm.className = "inline";
+    zielForm.innerHTML =
+      '<div class="field"><label>Ziel</label><input type="text" id="zText" placeholder="z. B. Aufstieg in die Kreisliga A" required></div>' +
+      '<div class="form-msg" id="zMsg"></div>' +
+      '<button type="submit" class="btn btn-primary">Ziel hinzufügen</button>';
+    zielFormCard.appendChild(zielForm);
+
+    zielForm.addEventListener("submit", function(e){
+      e.preventDefault();
+      var text = zielForm.querySelector("#zText").value.trim();
+      var msg = zielForm.querySelector("#zMsg");
+      if(!text){ msg.textContent = "Bitte ein Ziel angeben."; return; }
+      club.ziele.push({ id: uid(), text: text, erreicht: false });
+      persist();
+      render();
+      showToast("Ziel hinzugefügt.");
+    });
+
+    var zielListCard = document.createElement("div");
+    zielListCard.className = "card";
+    zielListCard.innerHTML = '<h3>Ziele (' + club.ziele.length + ')</h3>';
+    if(club.ziele.length===0){
+      var emptyZ = document.createElement("div");
+      emptyZ.className = "empty-note";
+      emptyZ.textContent = "Noch keine Ziele eingetragen.";
+      zielListCard.appendChild(emptyZ);
+    } else {
+      var zList = document.createElement("div");
+      zList.className = "bench-list";
+      club.ziele.forEach(function(z){
+        var chip = document.createElement("div");
+        chip.className = "bench-chip";
+        chip.style.cursor = "default";
+        chip.style.justifyContent = "space-between";
+        var label = document.createElement("span");
+        label.textContent = (z.erreicht ? "✅ " : "🎯 ") + z.text;
+        if(z.erreicht){ label.style.textDecoration = "line-through"; label.style.color = "var(--chalk-dim)"; }
+        var actions = document.createElement("div");
+        actions.style.display = "flex";
+        actions.style.gap = "6px";
+        var toggleBtn = document.createElement("button");
+        toggleBtn.className = "btn btn-small" + (z.erreicht ? "" : " btn-primary");
+        toggleBtn.textContent = z.erreicht ? "Zurücksetzen" : "Erreicht";
+        toggleBtn.addEventListener("click", function(){
+          z.erreicht = !z.erreicht;
+          persist();
+          render();
+        });
+        var delBtn = document.createElement("button");
+        delBtn.className = "del-x";
+        delBtn.title = "Ziel entfernen";
+        delBtn.textContent = "✕";
+        delBtn.addEventListener("click", function(){
+          club.ziele = club.ziele.filter(function(x){ return x.id!==z.id; });
+          persist();
+          render();
+          showToast("Ziel entfernt.");
+        });
+        actions.appendChild(toggleBtn);
+        actions.appendChild(delBtn);
+        chip.appendChild(label);
+        chip.appendChild(actions);
+        zList.appendChild(chip);
+      });
+      zielListCard.appendChild(zList);
+    }
+
+    zieleSection.appendChild(zielFormCard);
+    zieleSection.appendChild(zielListCard);
+
+    wrap.appendChild(erfolgeSection);
+    wrap.appendChild(zieleSection);
+    return wrap;
+  }
+
   /* ============ Verein settings tab ============ */
   function renderVereinSettings(){
     var club = currentClub();
@@ -917,17 +1077,38 @@
     form.className = "inline";
     form.innerHTML =
       '<div class="field"><label>Vereinsname</label><input type="text" id="eName" value="' + esc(club.name) + '" required></div>' +
+      '<div class="field"><label>Aktueller Vereinsmanager</label><input type="text" id="eManager" value="' + esc(club.manager || (currentVm() ? currentVm().name : "")) + '" placeholder="Name des aktuellen Vereinsmanagers"></div>' +
       '<div class="row-2">' +
         '<div class="field"><label>Ort</label><input type="text" id="eOrt" value="' + esc(club.ort||"") + '"></div>' +
         '<div class="field"><label>Gegründet</label><input type="number" id="eJahr" value="' + esc(club.jahr||"") + '"></div>' +
       '</div>' +
       '<div class="field"><label>Kürzel</label><input type="text" id="eKuerzel" maxlength="3" value="' + esc(club.kuerzel) + '"></div>' +
       '<div class="field"><label>Vereinsfarbe</label><div class="color-row" id="eColorRow"></div></div>' +
+      '<div class="field">' +
+        '<label>Vereinslogo</label>' +
+        '<div style="display:flex;align-items:center;gap:14px;">' +
+          '<div class="crest" id="logoPreview" style="background:' + esc(club.farbe) + ';width:54px;height:54px;flex:none;">' + crestInner(club) + '</div>' +
+          '<div style="display:flex;flex-direction:column;gap:6px;flex:1;">' +
+            '<input type="file" id="eLogoFile" accept="image/png,image/jpeg,image/webp,image/svg+xml">' +
+            '<button type="button" class="btn btn-ghost btn-small" id="eLogoRemove" style="align-self:flex-start;' + (club.logo ? '' : 'display:none;') + '">Logo entfernen</button>' +
+          '</div>' +
+        '</div>' +
+        '<div class="form-msg" id="logoMsg"></div>' +
+        '<div class="hint">PNG, JPG, WEBP oder SVG, max. 2 MB. Animierte GIFs werden aktuell nicht unterstützt.</div>' +
+      '</div>' +
       '<button type="submit" class="btn btn-primary">Änderungen speichern</button>';
     infoCard.appendChild(form);
 
     var colorRow = form.querySelector("#eColorRow");
     var selColor = club.farbe;
+    var selLogo = club.logo || null;
+    var logoPreview = form.querySelector("#logoPreview");
+    var logoFileInput = form.querySelector("#eLogoFile");
+    var logoMsg = form.querySelector("#logoMsg");
+    var logoRemoveBtn = form.querySelector("#eLogoRemove");
+    var ALLOWED_LOGO_TYPES = ["image/png","image/jpeg","image/webp","image/svg+xml"];
+    var MAX_LOGO_BYTES = 2 * 1024 * 1024;
+
     CLUB_COLORS.forEach(function(col){
       var sw = document.createElement("div");
       sw.className = "swatch" + (col===club.farbe ? " selected" : "");
@@ -936,17 +1117,57 @@
         selColor = col;
         colorRow.querySelectorAll(".swatch").forEach(function(s){ s.classList.remove("selected"); });
         sw.classList.add("selected");
+        if(!selLogo) logoPreview.style.background = col;
       });
       colorRow.appendChild(sw);
+    });
+
+    logoFileInput.addEventListener("change", function(){
+      var file = logoFileInput.files && logoFileInput.files[0];
+      logoMsg.textContent = "";
+      if(!file) return;
+      if(file.type === "image/gif"){
+        logoMsg.textContent = "Animierte GIFs werden aktuell nicht unterstützt.";
+        logoFileInput.value = "";
+        return;
+      }
+      if(ALLOWED_LOGO_TYPES.indexOf(file.type) === -1){
+        logoMsg.textContent = "Bitte ein PNG-, JPG-, WEBP- oder SVG-Bild wählen.";
+        logoFileInput.value = "";
+        return;
+      }
+      if(file.size > MAX_LOGO_BYTES){
+        logoMsg.textContent = "Die Datei ist zu groß (max. 2 MB).";
+        logoFileInput.value = "";
+        return;
+      }
+      var reader = new FileReader();
+      reader.onload = function(e){
+        selLogo = e.target.result;
+        logoPreview.style.background = "transparent";
+        logoPreview.innerHTML = '<img src="' + selLogo + '" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;">';
+        logoRemoveBtn.style.display = "";
+      };
+      reader.readAsDataURL(file);
+    });
+
+    logoRemoveBtn.addEventListener("click", function(){
+      selLogo = null;
+      logoFileInput.value = "";
+      logoPreview.style.background = selColor;
+      logoPreview.innerHTML = esc(club.kuerzel);
+      logoRemoveBtn.style.display = "none";
     });
 
     form.addEventListener("submit", function(e){
       e.preventDefault();
       club.name = form.querySelector("#eName").value.trim() || club.name;
+      club.manager = form.querySelector("#eManager").value.trim();
       club.ort = form.querySelector("#eOrt").value.trim();
       club.jahr = form.querySelector("#eJahr").value.trim();
       club.kuerzel = (form.querySelector("#eKuerzel").value.trim() || club.kuerzel).toUpperCase();
       club.farbe = selColor;
+      club.logo = selLogo;
       persist();
       render();
       showToast("Vereinsdaten aktualisiert.");
@@ -956,7 +1177,10 @@
     dangerCard.className = "card";
     dangerCard.innerHTML =
       '<h3>Überblick</h3>' +
+      '<div class="kv"><span>Aktueller Vereinsmanager</span><span>' + esc(club.manager || "–") + '</span></div>' +
       '<div class="kv"><span>Spieler im Kader</span><span>' + club.players.length + '</span></div>' +
+      '<div class="kv"><span>Vereinserfolge</span><span>' + (club.erfolge||[]).length + '</span></div>' +
+      '<div class="kv"><span>Offene Ziele</span><span>' + (club.ziele||[]).filter(function(z){ return !z.erreicht; }).length + ' / ' + (club.ziele||[]).length + '</span></div>' +
       '<div class="kv"><span>Aktuelle Formation</span><span>' + club.formation.template + '</span></div>' +
       '<div class="kv"><span>Aufgestellte Spieler</span><span>' + Object.keys(club.formation.slots).length + ' / ' + FORMATIONS[club.formation.template].length + '</span></div>' +
       '<div style="margin-top:18px;"><button class="btn btn-danger" id="deleteClubBtn">Verein auflösen</button></div>';
