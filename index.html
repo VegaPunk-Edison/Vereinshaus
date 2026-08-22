@@ -677,7 +677,7 @@
   function renderTabs(){
     var tabs = document.createElement("div");
     tabs.className = "tabs";
-    [["verein","Info"],["kader","Kader"],["aufstellung","Aufstellung"],["erfolge","Büro"]].forEach(function(t){
+    [["verein","Info"],["kader","Kader"],["aufstellung","Aufstellung"],["erfolge","Erfolge & Ziele"]].forEach(function(t){
       var b = document.createElement("button");
       b.textContent = t[1];
       if(session.tab===t[0]) b.className = "active";
@@ -1099,11 +1099,11 @@
     wrap.appendChild(gamificationCard);
 
     var todosSection = buildChecklistSection(club, "todos", "done", {
-      formTitle: "Todo hinzufügen", fieldLabel: "Aufgabe", placeholder: "z. B. Trikots bestellen",
-      addBtnLabel: "Todo hinzufügen", emptyErr: "Bitte eine Aufgabe angeben.", addToast: "Todo hinzugefügt.",
-      listTitle: "Todos", emptyText: "Noch keine Todos eingetragen.",
+      formTitle: "Aufgabe hinzufügen", fieldLabel: "Aufgabe", placeholder: "z. B. Trikots bestellen",
+      addBtnLabel: "Aufgabe hinzufügen", emptyErr: "Bitte eine Aufgabe angeben.", addToast: "Aufgabe hinzugefügt.",
+      listTitle: "Aufgaben", emptyText: "Noch keine Aufgaben eingetragen.",
       doneEmoji: "✅", openEmoji: "☐", doneLabel: "Erledigt", undoLabel: "Zurücksetzen",
-      deleteTitle: "Todo entfernen", deleteToast: "Todo entfernt."
+      deleteTitle: "Aufgabe entfernen", deleteToast: "Aufgabe entfernt."
     });
     todosSection.style.marginBottom = "26px";
     wrap.appendChild(todosSection);
@@ -1301,7 +1301,7 @@
       '<div class="kv"><span>Aktueller Vereinsmanager</span><span>' + esc(club.manager || "–") + '</span></div>' +
       '<div class="kv"><span>Spieler im Kader</span><span>' + club.players.length + '</span></div>' +
       '<div class="kv"><span>Vereinserfolge</span><span>' + (club.erfolge||[]).length + '</span></div>' +
-      '<div class="kv"><span>Offene Todos</span><span>' + (club.todos||[]).filter(function(t){ return !t.done; }).length + ' / ' + (club.todos||[]).length + '</span></div>' +
+      '<div class="kv"><span>Offene Aufgaben</span><span>' + (club.todos||[]).filter(function(t){ return !t.done; }).length + ' / ' + (club.todos||[]).length + '</span></div>' +
       '<div class="kv"><span>Offene Ziele</span><span>' + (club.ziele||[]).filter(function(z){ return !z.erreicht; }).length + ' / ' + (club.ziele||[]).length + '</span></div>' +
       '<div class="kv"><span>Aktuelle Formation</span><span>' + club.formation.template + '</span></div>' +
       '<div class="kv"><span>Aufgestellte Spieler</span><span>' + Object.keys(club.formation.slots).length + ' / ' + FORMATIONS[club.formation.template].length + '</span></div>' +
