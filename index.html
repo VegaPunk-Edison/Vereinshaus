@@ -632,7 +632,7 @@
         id: uid(), vmId: session.vmId, name: name, ort: ort, jahr: jahr,
         farbe: selectedColor, kuerzel: kuerzel, players: [],
         manager: currentVm() ? currentVm().name : "",
-        erfolge: [], ziele: [],
+        erfolge: [], ziele: [], todos: [],
         formation: { template: "4-4-2", slots: {} }
       };
       state.clubs.push(club);
@@ -660,7 +660,7 @@
   function renderTabs(){
     var tabs = document.createElement("div");
     tabs.className = "tabs";
-    [["kader","Kader"],["aufstellung","Aufstellung"],["erfolge","Erfolge & Ziele"],["verein","Verein"]].forEach(function(t){
+    [["verein","Info"],["kader","Kader"],["aufstellung","Aufstellung"],["erfolge","Büro"]].forEach(function(t){
       var b = document.createElement("button");
       b.textContent = t[1];
       if(session.tab===t[0]) b.className = "active";
@@ -675,7 +675,7 @@
     wrap.className = "workarea";
     if(session.tab==="kader") wrap.appendChild(renderKader());
     else if(session.tab==="aufstellung") wrap.appendChild(renderAufstellung());
-    else if(session.tab==="erfolge") wrap.appendChild(renderErfolge());
+    else if(session.tab==="erfolge") wrap.appendChild(renderBuero());
     else wrap.appendChild(renderVereinSettings());
     return wrap;
   }
@@ -913,16 +913,138 @@
     return svg;
   }
 
-  /* ============ Erfolge & Ziele tab ============ */
-  function renderErfolge(){
+  /* ============ Büro tab (Todos, Ziele, Erfolge, App-Level-Fortschritt) ============ */
+  function buildChecklistSection(club, key, flagKey, cfg){
+    var items = club[key] = club[key] || [];
+    var inputId = key + "Text";
+    var section = document.createElement("div");
+    section.className = "kader-layout";
+
+    var formCard = document.createElement("div");
+    formCard.className = "card";
+    formCard.innerHTML = '<h3>' + cfg.formTitle + '</h3>';
+    var form = document.createElement("form");
+    form.className = "inline";
+    form.innerHTML =
+      '<div class="field"><label>' + cfg.fieldLabel + '</label><input type="text" id="' + inputId + '" placeholder="' + cfg.placeholder + '" required></div>' +
+      '<div class="form-msg" id="' + key + 'Msg"></div>' +
+      '<button type="submit" class="btn btn-primary">' + cfg.addBtnLabel + '</button>';
+    formCard.appendChild(form);
+
+    form.addEventListener("submit", function(e){
+      e.preventDefault();
+      var text = form.querySelector("#" + inputId).value.trim();
+      var msg = form.querySelector("#" + key + "Msg");
+      if(!text){ msg.textContent = cfg.emptyErr; return; }
+      var item = { id: uid(), text: text };
+      item[flagKey] = false;
+      items.push(item);
+      persist();
+      render();
+      showToast(cfg.addToast);
+    });
+
+    var listCard = document.createElement("div");
+    listCard.className = "card";
+    listCard.innerHTML = '<h3>' + cfg.listTitle + ' (' + items.length + ')</h3>';
+    if(items.length===0){
+      var empty = document.createElement("div");
+      empty.className = "empty-note";
+      empty.textContent = cfg.emptyText;
+      listCard.appendChild(empty);
+    } else {
+      var list = document.createElement("div");
+      list.className = "bench-list";
+      items.forEach(function(it){
+        var done = !!it[flagKey];
+        var chip = document.createElement("div");
+        chip.className = "bench-chip";
+        chip.style.cursor = "default";
+        chip.style.justifyContent = "space-between";
+        var label = document.createElement("span");
+        label.textContent = (done ? cfg.doneEmoji : cfg.openEmoji) + " " + it.text;
+        if(done){ label.style.textDecoration = "line-through"; label.style.color = "var(--chalk-dim)"; }
+        var actions = document.createElement("div");
+        actions.style.display = "flex";
+        actions.style.gap = "6px";
+        var toggleBtn = document.createElement("button");
+        toggleBtn.className = "btn btn-small" + (done ? "" : " btn-primary");
+        toggleBtn.textContent = done ? cfg.undoLabel : cfg.doneLabel;
+        toggleBtn.addEventListener("click", function(){
+          it[flagKey] = !it[flagKey];
+          persist();
+          render();
+        });
+        var delBtn = document.createElement("button");
+        delBtn.className = "del-x";
+        delBtn.title = cfg.deleteTitle;
+        delBtn.textContent = "✕";
+        delBtn.addEventListener("click", function(){
+          club[key] = club[key].filter(function(x){ return x.id!==it.id; });
+          persist();
+          render();
+          showToast(cfg.deleteToast);
+        });
+        actions.appendChild(toggleBtn);
+        actions.appendChild(delBtn);
+        chip.appendChild(label);
+        chip.appendChild(actions);
+        list.appendChild(chip);
+      });
+      listCard.appendChild(list);
+    }
+
+    section.appendChild(formCard);
+    section.appendChild(listCard);
+    return section;
+  }
+
+  function renderBuero(){
     var club = currentClub();
     club.erfolge = club.erfolge || [];
     club.ziele = club.ziele || [];
+    club.todos = club.todos || [];
     var wrap = document.createElement("div");
+
+    var gamificationCard = document.createElement("div");
+    gamificationCard.className = "card";
+    gamificationCard.style.marginBottom = "22px";
+    gamificationCard.innerHTML =
+      '<h3>🔒 App-Level-Fortschritt</h3>' +
+      '<p style="color:var(--chalk-dim);font-size:13.5px;line-height:1.6;margin:0 0 14px;">' +
+        'Level, Erfahrungspunkte und die virtuelle Vereinswährung werden aus einer separaten App synchronisiert und laufen sonst unabhängig von Todos, Zielen und Erfolgen hier im Büro.' +
+      '</p>' +
+      '<div style="display:flex;align-items:center;gap:14px;padding:14px;border-radius:9px;background:var(--ink);border:1px dashed var(--line);">' +
+        '<div style="font-size:24px;">🎮</div>' +
+        '<div style="flex:1;">' +
+          '<div style="font-weight:600;font-size:13.5px;">Noch nicht verbunden</div>' +
+          '<div style="color:var(--chalk-dim);font-size:12.5px;margin-top:2px;">Die API-Anbindung an die andere App steht noch aus und wird nachgereicht.</div>' +
+        '</div>' +
+      '</div>';
+    wrap.appendChild(gamificationCard);
+
+    var todosSection = buildChecklistSection(club, "todos", "done", {
+      formTitle: "Todo hinzufügen", fieldLabel: "Aufgabe", placeholder: "z. B. Trikots bestellen",
+      addBtnLabel: "Todo hinzufügen", emptyErr: "Bitte eine Aufgabe angeben.", addToast: "Todo hinzugefügt.",
+      listTitle: "Todos", emptyText: "Noch keine Todos eingetragen.",
+      doneEmoji: "✅", openEmoji: "☐", doneLabel: "Erledigt", undoLabel: "Zurücksetzen",
+      deleteTitle: "Todo entfernen", deleteToast: "Todo entfernt."
+    });
+    todosSection.style.marginBottom = "26px";
+    wrap.appendChild(todosSection);
+
+    var zieleSection = buildChecklistSection(club, "ziele", "erreicht", {
+      formTitle: "Saisonziel hinzufügen", fieldLabel: "Ziel", placeholder: "z. B. Aufstieg in die Kreisliga A",
+      addBtnLabel: "Ziel hinzufügen", emptyErr: "Bitte ein Ziel angeben.", addToast: "Ziel hinzugefügt.",
+      listTitle: "Ziele", emptyText: "Noch keine Ziele eingetragen.",
+      doneEmoji: "✅", openEmoji: "🎯", doneLabel: "Erreicht", undoLabel: "Zurücksetzen",
+      deleteTitle: "Ziel entfernen", deleteToast: "Ziel entfernt."
+    });
+    zieleSection.style.marginBottom = "26px";
+    wrap.appendChild(zieleSection);
 
     var erfolgeSection = document.createElement("div");
     erfolgeSection.className = "kader-layout";
-    erfolgeSection.style.marginBottom = "26px";
 
     var erfolgFormCard = document.createElement("div");
     erfolgFormCard.className = "card";
@@ -981,90 +1103,12 @@
 
     erfolgeSection.appendChild(erfolgFormCard);
     erfolgeSection.appendChild(erfolgListCard);
-
-    var zieleSection = document.createElement("div");
-    zieleSection.className = "kader-layout";
-
-    var zielFormCard = document.createElement("div");
-    zielFormCard.className = "card";
-    zielFormCard.innerHTML = '<h3>Saisonziel hinzufügen</h3>';
-    var zielForm = document.createElement("form");
-    zielForm.className = "inline";
-    zielForm.innerHTML =
-      '<div class="field"><label>Ziel</label><input type="text" id="zText" placeholder="z. B. Aufstieg in die Kreisliga A" required></div>' +
-      '<div class="form-msg" id="zMsg"></div>' +
-      '<button type="submit" class="btn btn-primary">Ziel hinzufügen</button>';
-    zielFormCard.appendChild(zielForm);
-
-    zielForm.addEventListener("submit", function(e){
-      e.preventDefault();
-      var text = zielForm.querySelector("#zText").value.trim();
-      var msg = zielForm.querySelector("#zMsg");
-      if(!text){ msg.textContent = "Bitte ein Ziel angeben."; return; }
-      club.ziele.push({ id: uid(), text: text, erreicht: false });
-      persist();
-      render();
-      showToast("Ziel hinzugefügt.");
-    });
-
-    var zielListCard = document.createElement("div");
-    zielListCard.className = "card";
-    zielListCard.innerHTML = '<h3>Ziele (' + club.ziele.length + ')</h3>';
-    if(club.ziele.length===0){
-      var emptyZ = document.createElement("div");
-      emptyZ.className = "empty-note";
-      emptyZ.textContent = "Noch keine Ziele eingetragen.";
-      zielListCard.appendChild(emptyZ);
-    } else {
-      var zList = document.createElement("div");
-      zList.className = "bench-list";
-      club.ziele.forEach(function(z){
-        var chip = document.createElement("div");
-        chip.className = "bench-chip";
-        chip.style.cursor = "default";
-        chip.style.justifyContent = "space-between";
-        var label = document.createElement("span");
-        label.textContent = (z.erreicht ? "✅ " : "🎯 ") + z.text;
-        if(z.erreicht){ label.style.textDecoration = "line-through"; label.style.color = "var(--chalk-dim)"; }
-        var actions = document.createElement("div");
-        actions.style.display = "flex";
-        actions.style.gap = "6px";
-        var toggleBtn = document.createElement("button");
-        toggleBtn.className = "btn btn-small" + (z.erreicht ? "" : " btn-primary");
-        toggleBtn.textContent = z.erreicht ? "Zurücksetzen" : "Erreicht";
-        toggleBtn.addEventListener("click", function(){
-          z.erreicht = !z.erreicht;
-          persist();
-          render();
-        });
-        var delBtn = document.createElement("button");
-        delBtn.className = "del-x";
-        delBtn.title = "Ziel entfernen";
-        delBtn.textContent = "✕";
-        delBtn.addEventListener("click", function(){
-          club.ziele = club.ziele.filter(function(x){ return x.id!==z.id; });
-          persist();
-          render();
-          showToast("Ziel entfernt.");
-        });
-        actions.appendChild(toggleBtn);
-        actions.appendChild(delBtn);
-        chip.appendChild(label);
-        chip.appendChild(actions);
-        zList.appendChild(chip);
-      });
-      zielListCard.appendChild(zList);
-    }
-
-    zieleSection.appendChild(zielFormCard);
-    zieleSection.appendChild(zielListCard);
-
     wrap.appendChild(erfolgeSection);
-    wrap.appendChild(zieleSection);
+
     return wrap;
   }
 
-  /* ============ Verein settings tab ============ */
+  /* ============ Info tab (Vereinsdaten) ============ */
   function renderVereinSettings(){
     var club = currentClub();
     var wrap = document.createElement("div");
@@ -1180,6 +1224,7 @@
       '<div class="kv"><span>Aktueller Vereinsmanager</span><span>' + esc(club.manager || "–") + '</span></div>' +
       '<div class="kv"><span>Spieler im Kader</span><span>' + club.players.length + '</span></div>' +
       '<div class="kv"><span>Vereinserfolge</span><span>' + (club.erfolge||[]).length + '</span></div>' +
+      '<div class="kv"><span>Offene Todos</span><span>' + (club.todos||[]).filter(function(t){ return !t.done; }).length + ' / ' + (club.todos||[]).length + '</span></div>' +
       '<div class="kv"><span>Offene Ziele</span><span>' + (club.ziele||[]).filter(function(z){ return !z.erreicht; }).length + ' / ' + (club.ziele||[]).length + '</span></div>' +
       '<div class="kv"><span>Aktuelle Formation</span><span>' + club.formation.template + '</span></div>' +
       '<div class="kv"><span>Aufgestellte Spieler</span><span>' + Object.keys(club.formation.slots).length + ' / ' + FORMATIONS[club.formation.template].length + '</span></div>' +
