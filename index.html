@@ -1021,178 +1021,34 @@
     return section;
   }
 
-  /* ============ Persönliches Level (manuell, bis YuYu-API steht) ============ */
-  var LEBENSBEREICHE = ["Persönlich", "Familie & Freunde", "Arbeit", "Gemeinde"];
-
-  function xpForLevel(level){ return Math.round(100 * Math.pow(1.8, level)); }
-  function computeLevelFromXP(totalXp){
-    var level = 0, rem = totalXp || 0;
-    while(level < 10){
-      var needed = xpForLevel(level);
-      if(rem < needed) break;
-      rem -= needed;
-      level++;
-    }
-    return { level: level, xpInLevel: rem, xpNeeded: level < 10 ? xpForLevel(level) : null };
-  }
-
-  function ensurePersoenlich(vm){
-    if(!vm.persoenlich) vm.persoenlich = { lebensbereiche: {}, tugenden: [], gewohnheiten: [], faehigkeiten: [] };
-    var p = vm.persoenlich;
-    LEBENSBEREICHE.forEach(function(name){
-      if(!p.lebensbereiche[name]) p.lebensbereiche[name] = { xp: 0 };
-    });
-    if(p.lebensbereiche["Arbeit"].jobTitel === undefined) p.lebensbereiche["Arbeit"].jobTitel = "";
-    if(p.lebensbereiche["Arbeit"].arbeitgeber === undefined) p.lebensbereiche["Arbeit"].arbeitgeber = "";
-    p.tugenden = p.tugenden || [];
-    p.gewohnheiten = p.gewohnheiten || [];
-    p.faehigkeiten = p.faehigkeiten || [];
-    return p;
-  }
-
-  function levelBarHtml(xp){
-    var lv = computeLevelFromXP(xp);
-    var pct = lv.xpNeeded ? Math.round((lv.xpInLevel / lv.xpNeeded) * 100) : 100;
-    return (
-      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">' +
-        '<span style="font-size:11px;color:var(--chalk-dim);">Level</span>' +
-        '<span class="mono" style="font-size:12px;color:var(--gold);font-weight:700;">' + lv.level + (lv.level>=10?" · MAX":"") + '</span>' +
-      '</div>' +
-      '<div style="height:6px;border-radius:4px;background:var(--ink-2);overflow:hidden;">' +
-        '<div style="height:100%;width:' + pct + '%;background:var(--gold);"></div>' +
-      '</div>' +
-      '<div style="font-size:10.5px;color:var(--chalk-dim);margin-top:3px;">' +
-        (lv.xpNeeded ? (lv.xpInLevel + ' / ' + lv.xpNeeded + ' XP') : (xp + ' XP')) +
-      '</div>'
-    );
-  }
-
-  function renderLebensbereicheCard(vm){
-    var p = ensurePersoenlich(vm);
+  /* ============ PIFA-eSports-Verknüpfung (optional, App-Level-Fortschritt) ============ */
+  function renderPifaLinkCard(){
     var card = document.createElement("div");
     card.className = "card";
-    card.style.marginBottom = "22px";
+    card.style.marginBottom = "26px";
     card.innerHTML =
-      '<h3>Lebensbereiche</h3>' +
-      '<p class="hint" style="margin:0 0 14px;">Manuell gepflegt, bis die API-Anbindung an YuYu steht – XP direkt eintragen.</p>';
-    var grid = document.createElement("div");
-    grid.style.display = "grid";
-    grid.style.gridTemplateColumns = "repeat(auto-fit,minmax(210px,1fr))";
-    grid.style.gap = "14px";
-    LEBENSBEREICHE.forEach(function(name){
-      var area = p.lebensbereiche[name];
-      var box = document.createElement("div");
-      box.style.background = "var(--ink)";
-      box.style.border = "1px solid var(--line)";
-      box.style.borderRadius = "10px";
-      box.style.padding = "14px";
-      box.innerHTML =
-        '<div style="font-weight:600;font-size:13.5px;margin-bottom:8px;">' + esc(name) + '</div>' +
-        levelBarHtml(area.xp) +
-        '<div class="field" style="margin-top:10px;margin-bottom:0;"><label>XP</label><input type="number" min="0" class="lb-xp"></div>' +
-        (name === "Arbeit" ?
-          '<div class="field" style="margin-top:8px;"><label>Job-Titel</label><input type="text" class="lb-job" placeholder="z. B. eSport-Profi"></div>' +
-          '<div class="field" style="margin-top:8px;margin-bottom:0;"><label>Arbeitgeber</label><input type="text" class="lb-employer" placeholder="z. B. PIFA"></div>'
-          : "");
-      var xpInput = box.querySelector(".lb-xp");
-      xpInput.value = area.xp;
-      xpInput.addEventListener("change", function(){
-        area.xp = Math.max(0, Number(xpInput.value) || 0);
-        persist();
-        render();
-      });
-      var jobInput = box.querySelector(".lb-job");
-      if(jobInput){
-        jobInput.value = area.jobTitel;
-        jobInput.addEventListener("change", function(){ area.jobTitel = jobInput.value.trim(); persist(); });
-      }
-      var employerInput = box.querySelector(".lb-employer");
-      if(employerInput){
-        employerInput.value = area.arbeitgeber;
-        employerInput.addEventListener("change", function(){ area.arbeitgeber = employerInput.value.trim(); persist(); });
-      }
-      grid.appendChild(box);
-    });
-    card.appendChild(grid);
+      '<h3>App-Level-Fortschritt</h3>' +
+      '<div style="display:flex;align-items:center;gap:14px;padding:14px;border-radius:9px;background:var(--ink);border:1px dashed var(--line);margin-bottom:16px;">' +
+        '<div style="font-size:24px;">🔗</div>' +
+        '<div style="flex:1;">' +
+          '<div style="font-weight:600;font-size:13.5px;">Nicht mit PIFA eSports verknüpft</div>' +
+          '<div style="color:var(--chalk-dim);font-size:12.5px;margin-top:2px;">Aufgaben &amp; Ziele funktionieren hier komplett eigenständig. Verknüpfen ist optional – dann laufen sie synchron mit PIFA eSports, ohne doppelte Eingabe.</div>' +
+        '</div>' +
+        '<button class="btn btn-small" disabled title="Kommt bald">Verknüpfen</button>' +
+      '</div>' +
+      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;">' +
+        '<div style="background:var(--ink);border:1px solid var(--line);border-radius:10px;padding:14px;opacity:.55;">' +
+          '<div style="font-size:11px;color:var(--chalk-dim);margin-bottom:6px;">LEVEL</div>' +
+          '<div style="display:flex;align-items:baseline;gap:6px;"><span style="font-family:\'Oswald\',sans-serif;font-size:26px;color:var(--gold);">–</span><span style="font-size:11px;color:var(--chalk-dim);">synct via PIFA</span></div>' +
+          '<div style="height:6px;border-radius:4px;background:var(--ink-2);margin-top:10px;"></div>' +
+        '</div>' +
+        '<div style="background:var(--ink);border:1px solid var(--line);border-radius:10px;padding:14px;opacity:.55;">' +
+          '<div style="font-size:11px;color:var(--chalk-dim);margin-bottom:6px;">🔒 REWARD STORE</div>' +
+          '<div style="font-size:13px;font-weight:600;">Erst nach Verknüpfung</div>' +
+          '<div style="font-size:11.5px;color:var(--chalk-dim);margin-top:4px;">XP gegen Prämien im PIFA-Store eintauschen.</div>' +
+        '</div>' +
+      '</div>';
     return card;
-  }
-
-  function buildGrowthItemSection(vm, key, cfg){
-    var p = ensurePersoenlich(vm);
-    var items = p[key];
-    var inputId = key + "Name";
-    var section = document.createElement("div");
-    section.className = "kader-layout";
-
-    var formCard = document.createElement("div");
-    formCard.className = "card";
-    formCard.innerHTML = '<h3>' + cfg.addTitle + '</h3>';
-    var form = document.createElement("form");
-    form.className = "inline";
-    form.innerHTML =
-      '<div class="field"><label>Name</label><input type="text" id="' + inputId + '" placeholder="' + cfg.placeholder + '" required></div>' +
-      '<div class="form-msg" id="' + key + 'Msg"></div>' +
-      '<button type="submit" class="btn btn-primary">' + cfg.addBtnLabel + '</button>';
-    formCard.appendChild(form);
-
-    form.addEventListener("submit", function(e){
-      e.preventDefault();
-      var name = form.querySelector("#" + inputId).value.trim();
-      var msg = form.querySelector("#" + key + "Msg");
-      if(!name){ msg.textContent = cfg.emptyErr; return; }
-      items.push({ id: uid(), name: name, xp: 0 });
-      persist();
-      render();
-      showToast(cfg.addToast);
-    });
-
-    var listCard = document.createElement("div");
-    listCard.className = "card";
-    listCard.innerHTML = '<h3>' + cfg.listTitle + ' (' + items.length + ')</h3>';
-    if(items.length === 0){
-      var empty = document.createElement("div");
-      empty.className = "empty-note";
-      empty.textContent = cfg.emptyText;
-      listCard.appendChild(empty);
-    } else {
-      var list = document.createElement("div");
-      list.style.display = "flex";
-      list.style.flexDirection = "column";
-      list.style.gap = "10px";
-      items.forEach(function(item){
-        var row = document.createElement("div");
-        row.style.background = "var(--ink)";
-        row.style.border = "1px solid var(--line)";
-        row.style.borderRadius = "8px";
-        row.style.padding = "10px 12px";
-        row.innerHTML =
-          '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">' +
-            '<span style="font-size:13px;font-weight:600;">' + esc(item.name) + '</span>' +
-            '<button class="del-x" title="' + cfg.deleteTitle + '">✕</button>' +
-          '</div>' +
-          levelBarHtml(item.xp) +
-          '<input type="number" min="0" class="gi-xp" style="margin-top:8px;width:100%;background:var(--ink-2);border:1px solid var(--line);color:var(--chalk);padding:6px 8px;border-radius:6px;font-size:13px;">';
-        var xpInput = row.querySelector(".gi-xp");
-        xpInput.value = item.xp;
-        xpInput.addEventListener("change", function(){
-          item.xp = Math.max(0, Number(xpInput.value) || 0);
-          persist();
-          render();
-        });
-        row.querySelector(".del-x").addEventListener("click", function(){
-          p[key] = p[key].filter(function(x){ return x.id !== item.id; });
-          persist();
-          render();
-          showToast(cfg.deleteToast);
-        });
-        list.appendChild(row);
-      });
-      listCard.appendChild(list);
-    }
-
-    section.appendChild(formCard);
-    section.appendChild(listCard);
-    return section;
   }
 
   function renderTrophaeenSection(club){
@@ -1255,35 +1111,7 @@
     club.todos = club.todos || [];
     var wrap = document.createElement("div");
 
-    var vm = currentVm();
-    wrap.appendChild(renderLebensbereicheCard(vm));
-
-    var tugendenSection = buildGrowthItemSection(vm, "tugenden", {
-      addTitle: "Tugend hinzufügen", placeholder: "z. B. Disziplin", addBtnLabel: "Tugend hinzufügen",
-      emptyErr: "Bitte einen Namen angeben.", addToast: "Tugend hinzugefügt.",
-      listTitle: "Tugenden", emptyText: "Noch keine Tugenden eingetragen.",
-      deleteTitle: "Tugend entfernen", deleteToast: "Tugend entfernt."
-    });
-    tugendenSection.style.marginBottom = "26px";
-    wrap.appendChild(tugendenSection);
-
-    var gewohnheitenSection = buildGrowthItemSection(vm, "gewohnheiten", {
-      addTitle: "Gewohnheit hinzufügen", placeholder: "z. B. Frühes Aufstehen", addBtnLabel: "Gewohnheit hinzufügen",
-      emptyErr: "Bitte einen Namen angeben.", addToast: "Gewohnheit hinzugefügt.",
-      listTitle: "Gewohnheiten", emptyText: "Noch keine Gewohnheiten eingetragen.",
-      deleteTitle: "Gewohnheit entfernen", deleteToast: "Gewohnheit entfernt."
-    });
-    gewohnheitenSection.style.marginBottom = "26px";
-    wrap.appendChild(gewohnheitenSection);
-
-    var faehigkeitenSection = buildGrowthItemSection(vm, "faehigkeiten", {
-      addTitle: "Fähigkeit hinzufügen", placeholder: "z. B. Spanisch", addBtnLabel: "Fähigkeit hinzufügen",
-      emptyErr: "Bitte einen Namen angeben.", addToast: "Fähigkeit hinzugefügt.",
-      listTitle: "Fähigkeiten", emptyText: "Noch keine Fähigkeiten eingetragen.",
-      deleteTitle: "Fähigkeit entfernen", deleteToast: "Fähigkeit entfernt."
-    });
-    faehigkeitenSection.style.marginBottom = "26px";
-    wrap.appendChild(faehigkeitenSection);
+    wrap.appendChild(renderPifaLinkCard());
 
     var todosSection = buildChecklistSection(club, "todos", "done", {
       formTitle: "Aufgabe hinzufügen", fieldLabel: "Aufgabe", placeholder: "z. B. Trikots bestellen",
