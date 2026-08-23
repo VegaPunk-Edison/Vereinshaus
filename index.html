@@ -311,6 +311,18 @@
     return false;
   }
 
+  var VEREINSERFOLG_DEFS = [
+    { id:"meisterschaft",       titel:"Meisterschaft",       icon:"🏆", desc:"Die Liga als Meister abgeschlossen." },
+    { id:"aufstieg",            titel:"Aufstieg",            icon:"📈", desc:"Aufstieg in eine höhere Liga geschafft." },
+    { id:"pokalsieg",           titel:"Pokalsieg",           icon:"🥇", desc:"Einen Pokalwettbewerb gewonnen." },
+    { id:"klassenerhalt",       titel:"Klassenerhalt",       icon:"🛡️", desc:"Den Klassenerhalt gesichert." },
+    { id:"hallenmeisterschaft", titel:"Hallenmeisterschaft", icon:"🏟️", desc:"Eine Hallenmeisterschaft gewonnen." },
+    { id:"fairplay",            titel:"Fair-Play-Preis",     icon:"🤝", desc:"Den Fair-Play-Preis der Liga erhalten." },
+    { id:"publikumspreis",      titel:"Publikumspreis",      icon:"📣", desc:"Auszeichnung für besten Zuschauerzuspruch." },
+    { id:"turniersieg",         titel:"Turniersieg",         icon:"🎖️", desc:"Ein Freundschafts- oder Hallenturnier gewonnen." },
+    { id:"jubilaeum",           titel:"Vereinsjubiläum",     icon:"🎉", desc:"Ein rundes Vereinsjubiläum gefeiert." }
+  ];
+
   var FORMATIONS = {
     "4-4-2":[
       {id:"gk",label:"TW",x:50,y:92},
@@ -357,7 +369,7 @@
   }
 
   var state = defaultState();
-  var session = { vmId:null, clubId:null, tab:"kader", activeSlot:null };
+  var session = { vmId:null, clubId:null, tab:"kader", activeSlot:null, activeErfolg:null };
 
   function persist(){
     var json = JSON.stringify(state);
@@ -649,7 +661,7 @@
         id: uid(), vmId: session.vmId, name: name, ort: ort, jahr: jahr,
         farbe: selectedColor, kuerzel: kuerzel, players: [],
         manager: currentVm() ? currentVm().name : "",
-        erfolge: [], ziele: [], todos: [],
+        erfolge: {}, ziele: [], todos: [],
         formation: { template: "4-4-2", slots: {} }
       };
       state.clubs.push(club);
@@ -681,7 +693,7 @@
       var b = document.createElement("button");
       b.textContent = t[1];
       if(session.tab===t[0]) b.className = "active";
-      b.addEventListener("click", function(){ session.tab = t[0]; session.activeSlot=null; render(); });
+      b.addEventListener("click", function(){ session.tab = t[0]; session.activeSlot=null; session.activeErfolg=null; render(); });
       tabs.appendChild(b);
     });
     return tabs;
@@ -1135,74 +1147,124 @@
     return wrap;
   }
 
+  function renderVereinserfolgeSection(club){
+    club.erfolge = club.erfolge || {};
+    var card = document.createElement("div");
+    card.className = "card";
+    card.innerHTML =
+      '<h3>Vereinserfolge</h3>' +
+      '<p style="color:var(--chalk-dim);font-size:13.5px;line-height:1.6;margin:0 0 16px;">Feste Liste offizieller Vereinsehrungen – anklicken, um sie mit Jahr als erreicht einzutragen.</p>';
+    var grid = document.createElement("div");
+    grid.style.display = "flex";
+    grid.style.flexWrap = "wrap";
+    grid.style.gap = "18px";
+    VEREINSERFOLG_DEFS.forEach(function(def){
+      var jahr = club.erfolge[def.id];
+      var earned = jahr != null;
+      var item = document.createElement("div");
+      item.style.display = "flex";
+      item.style.flexDirection = "column";
+      item.style.alignItems = "center";
+      item.style.width = "88px";
+      item.style.textAlign = "center";
+      item.style.cursor = "pointer";
+      item.title = def.desc;
+      var circle = document.createElement("div");
+      circle.style.width = "60px";
+      circle.style.height = "60px";
+      circle.style.borderRadius = "50%";
+      circle.style.display = "flex";
+      circle.style.alignItems = "center";
+      circle.style.justifyContent = "center";
+      circle.style.fontSize = "24px";
+      circle.style.flex = "none";
+      if(earned){
+        circle.style.background = "var(--gold)";
+        circle.style.border = "2px solid var(--gold)";
+        circle.textContent = def.icon;
+      } else {
+        circle.style.background = "var(--ink)";
+        circle.style.border = "2px dashed var(--chalk-dim)";
+        circle.style.opacity = "0.5";
+        circle.textContent = def.icon;
+      }
+      if(session.activeErfolg === def.id) circle.style.boxShadow = "0 0 0 3px rgba(227,178,60,.4)";
+      var label = document.createElement("div");
+      label.style.fontSize = "11.5px";
+      label.style.marginTop = "8px";
+      label.style.lineHeight = "1.3";
+      label.style.color = earned ? "var(--chalk)" : "var(--chalk-dim)";
+      label.textContent = def.titel;
+      var yearLabel = document.createElement("div");
+      yearLabel.className = "mono";
+      yearLabel.style.fontSize = "10.5px";
+      yearLabel.style.color = "var(--gold)";
+      yearLabel.textContent = earned ? jahr : "";
+      item.appendChild(circle);
+      item.appendChild(label);
+      item.appendChild(yearLabel);
+      item.addEventListener("click", function(){
+        session.activeErfolg = session.activeErfolg === def.id ? null : def.id;
+        render();
+      });
+      grid.appendChild(item);
+    });
+    card.appendChild(grid);
+
+    if(session.activeErfolg){
+      var activeDef = VEREINSERFOLG_DEFS.find(function(d){ return d.id === session.activeErfolg; });
+      var current = club.erfolge[activeDef.id];
+      var editor = document.createElement("div");
+      editor.style.marginTop = "18px";
+      editor.style.padding = "14px";
+      editor.style.borderRadius = "9px";
+      editor.style.border = "1px solid var(--gold)";
+      editor.style.background = "var(--ink)";
+      editor.innerHTML =
+        '<div style="font-weight:600;font-size:13.5px;margin-bottom:10px;">' + activeDef.icon + ' ' + esc(activeDef.titel) + '</div>' +
+        '<div class="field" style="margin-bottom:0;max-width:160px;"><label>Jahr</label><input type="number" id="veJahr" min="1850" max="2100" value="' + (current!=null?current:"") + '"></div>';
+      var actions = document.createElement("div");
+      actions.style.display = "flex";
+      actions.style.gap = "10px";
+      actions.style.marginTop = "12px";
+      var saveBtn = document.createElement("button");
+      saveBtn.className = "btn btn-primary btn-small";
+      saveBtn.textContent = current != null ? "Jahr aktualisieren" : "Als erreicht eintragen";
+      saveBtn.addEventListener("click", function(){
+        var input = editor.querySelector("#veJahr");
+        var val = input.value.trim();
+        club.erfolge[activeDef.id] = val ? Number(val) : new Date().getFullYear();
+        persist();
+        render();
+        showToast(activeDef.titel + " eingetragen.");
+      });
+      actions.appendChild(saveBtn);
+      if(current != null){
+        var removeBtn = document.createElement("button");
+        removeBtn.className = "btn btn-danger btn-small";
+        removeBtn.textContent = "Entfernen";
+        removeBtn.addEventListener("click", function(){
+          delete club.erfolge[activeDef.id];
+          persist();
+          render();
+          showToast(activeDef.titel + " entfernt.");
+        });
+        actions.appendChild(removeBtn);
+      }
+      editor.appendChild(actions);
+      card.appendChild(editor);
+    }
+
+    return card;
+  }
+
   function renderErfolge(){
     var club = currentClub();
-    club.erfolge = club.erfolge || [];
+    club.erfolge = club.erfolge || {};
     var wrap = document.createElement("div");
 
     wrap.appendChild(renderTrophaeenSection(club));
-
-    var erfolgeSection = document.createElement("div");
-    erfolgeSection.className = "kader-layout";
-
-    var erfolgFormCard = document.createElement("div");
-    erfolgFormCard.className = "card";
-    erfolgFormCard.innerHTML = '<h3>Vereinserfolg hinzufügen</h3>';
-    var erfolgForm = document.createElement("form");
-    erfolgForm.className = "inline";
-    erfolgForm.innerHTML =
-      '<div class="field"><label>Titel</label><input type="text" id="erTitel" placeholder="z. B. Kreismeister" required></div>' +
-      '<div class="field"><label>Jahr</label><input type="number" id="erJahr" min="1850" max="2100" placeholder="z. B. 2023"></div>' +
-      '<div class="form-msg" id="erMsg"></div>' +
-      '<button type="submit" class="btn btn-primary">Erfolg hinzufügen</button>';
-    erfolgFormCard.appendChild(erfolgForm);
-
-    erfolgForm.addEventListener("submit", function(e){
-      e.preventDefault();
-      var titel = erfolgForm.querySelector("#erTitel").value.trim();
-      var jahr = erfolgForm.querySelector("#erJahr").value.trim();
-      var msg = erfolgForm.querySelector("#erMsg");
-      if(!titel){ msg.textContent = "Bitte einen Titel angeben."; return; }
-      club.erfolge.push({ id: uid(), titel: titel, jahr: jahr ? Number(jahr) : null });
-      persist();
-      render();
-      showToast("Erfolg hinzugefügt.");
-    });
-
-    var erfolge = club.erfolge.slice().sort(function(a,b){ return (b.jahr||0)-(a.jahr||0); });
-    var erfolgListCard = document.createElement("div");
-    erfolgListCard.className = "card";
-    erfolgListCard.innerHTML = '<h3>Vereinserfolge (' + erfolge.length + ')</h3>';
-    if(erfolge.length===0){
-      var emptyE = document.createElement("div");
-      emptyE.className = "empty-note";
-      emptyE.textContent = "Noch keine Erfolge eingetragen.";
-      erfolgListCard.appendChild(emptyE);
-    } else {
-      var erTable = document.createElement("table");
-      erTable.className = "player-table";
-      erTable.innerHTML = '<thead><tr><th>Titel</th><th>Jahr</th><th></th></tr></thead><tbody></tbody>';
-      var erBody = erTable.querySelector("tbody");
-      erfolge.forEach(function(er){
-        var tr = document.createElement("tr");
-        tr.innerHTML =
-          '<td>🏆 ' + esc(er.titel) + '</td>' +
-          '<td>' + (er.jahr!=null ? er.jahr : "–") + '</td>' +
-          '<td style="text-align:right;"><button class="del-x" title="Erfolg entfernen">✕</button></td>';
-        tr.querySelector(".del-x").addEventListener("click", function(){
-          club.erfolge = club.erfolge.filter(function(x){ return x.id!==er.id; });
-          persist();
-          render();
-          showToast("Erfolg entfernt.");
-        });
-        erBody.appendChild(tr);
-      });
-      erfolgListCard.appendChild(erTable);
-    }
-
-    erfolgeSection.appendChild(erfolgFormCard);
-    erfolgeSection.appendChild(erfolgListCard);
-    wrap.appendChild(erfolgeSection);
+    wrap.appendChild(renderVereinserfolgeSection(club));
 
     return wrap;
   }
@@ -1322,7 +1384,7 @@
       '<h3>Überblick</h3>' +
       '<div class="kv"><span>Aktueller Vereinsmanager</span><span>' + esc(club.manager || "–") + '</span></div>' +
       '<div class="kv"><span>Spieler im Kader</span><span>' + club.players.length + '</span></div>' +
-      '<div class="kv"><span>Vereinserfolge</span><span>' + (club.erfolge||[]).length + '</span></div>' +
+      '<div class="kv"><span>Vereinserfolge</span><span>' + Object.keys(club.erfolge||{}).length + ' / ' + VEREINSERFOLG_DEFS.length + '</span></div>' +
       '<div class="kv"><span>Offene Aufgaben</span><span>' + (club.todos||[]).filter(function(t){ return !t.done; }).length + ' / ' + (club.todos||[]).length + '</span></div>' +
       '<div class="kv"><span>Offene Ziele</span><span>' + (club.ziele||[]).filter(function(z){ return !z.erreicht; }).length + ' / ' + (club.ziele||[]).length + '</span></div>' +
       '<div class="kv"><span>Aktuelle Formation</span><span>' + club.formation.template + '</span></div>' +
