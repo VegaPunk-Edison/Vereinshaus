@@ -690,7 +690,7 @@
   function renderTabs(){
     var tabs = document.createElement("div");
     tabs.className = "tabs";
-    [["verein","Info"],["kader","Kader"],["aufstellung","Aufstellung"],["erfolge","Erfolge"],["ziele","Büro"]].forEach(function(t){
+    [["verein","Info"],["kader","Kader"],["aufstellung","Aufstellung"],["erfolge","Erfolge"],["you","You"],["ziele","Ziele"],["todos","To-Do's"]].forEach(function(t){
       var b = document.createElement("button");
       b.textContent = t[1];
       if(session.tab===t[0]) b.className = "active";
@@ -706,7 +706,9 @@
     if(session.tab==="kader") wrap.appendChild(renderKader());
     else if(session.tab==="aufstellung") wrap.appendChild(renderAufstellung());
     else if(session.tab==="erfolge") wrap.appendChild(renderErfolge());
-    else if(session.tab==="ziele") wrap.appendChild(renderBuero());
+    else if(session.tab==="you") wrap.appendChild(renderYou());
+    else if(session.tab==="ziele") wrap.appendChild(renderZieleTab());
+    else if(session.tab==="todos") wrap.appendChild(renderTodosTab());
     else wrap.appendChild(renderVereinSettings());
     return wrap;
   }
@@ -1038,7 +1040,8 @@
   var PIFA_SYNC_TILES = [
     { titel:"Career-Attribute", desc:"PAC · SHO · PAS · DRI · DEF · PHY – ergeben dein Transfermarkt-Level." },
     { titel:"Persönlichkeits-Level", desc:"Fitness, Tugend, Gewohnheiten – je 0–100." },
-    { titel:"Karriereziele & Meilensteine", desc:"Eigene Ziele mit Status, plus erreichte Meilensteine." }
+    { titel:"Karriereziele & Meilensteine", desc:"Eigene Ziele mit Status, plus erreichte Meilensteine." },
+    { titel:"💡 Tipps", desc:"Persönliche Trainings- und Entwicklungstipps – folgt später." }
   ];
 
   function renderPifaLinkCard(){
@@ -1051,7 +1054,7 @@
         '<div style="font-size:24px;">🔗</div>' +
         '<div style="flex:1;">' +
           '<div style="font-weight:600;font-size:13.5px;">Nicht mit PIFA eSports verknüpft</div>' +
-          '<div style="color:var(--chalk-dim);font-size:12.5px;margin-top:2px;">Aufgaben &amp; Ziele funktionieren hier komplett eigenständig. Verknüpfen ist optional – dann laufen sie synchron mit PIFA eSports, ohne doppelte Eingabe.</div>' +
+          '<div style="color:var(--chalk-dim);font-size:12.5px;margin-top:2px;">Die Tabs „Ziele" und „To-Dos" funktionieren hier komplett eigenständig. Verknüpfen ist optional – dann laufen sie synchron mit PIFA eSports, ohne doppelte Eingabe.</div>' +
         '</div>' +
         '<button class="btn btn-small" disabled title="Kommt bald">Verknüpfen</button>' +
       '</div>' +
@@ -1120,33 +1123,37 @@
     return card;
   }
 
-  function renderBuero(){
+  function renderYou(){
+    var wrap = document.createElement("div");
+    wrap.appendChild(renderPifaLinkCard());
+    return wrap;
+  }
+
+  function renderTodosTab(){
     var club = currentClub();
-    club.ziele = club.ziele || [];
     club.todos = club.todos || [];
     var wrap = document.createElement("div");
-
-    wrap.appendChild(renderPifaLinkCard());
-
-    var todosSection = buildChecklistSection(club, "todos", "done", {
+    wrap.appendChild(buildChecklistSection(club, "todos", "done", {
       formTitle: "Aufgabe hinzufügen", fieldLabel: "Aufgabe", placeholder: "z. B. Trikots bestellen",
       addBtnLabel: "Aufgabe hinzufügen", emptyErr: "Bitte eine Aufgabe angeben.", addToast: "Aufgabe hinzugefügt.",
       listTitle: "Aufgaben", emptyText: "Noch keine Aufgaben eingetragen.",
       doneEmoji: "✅", openEmoji: "☐", doneLabel: "Erledigt", undoLabel: "Zurücksetzen",
       deleteTitle: "Aufgabe entfernen", deleteToast: "Aufgabe entfernt."
-    });
-    todosSection.style.marginBottom = "26px";
-    wrap.appendChild(todosSection);
+    }));
+    return wrap;
+  }
 
-    var zieleSection = buildChecklistSection(club, "ziele", "erreicht", {
+  function renderZieleTab(){
+    var club = currentClub();
+    club.ziele = club.ziele || [];
+    var wrap = document.createElement("div");
+    wrap.appendChild(buildChecklistSection(club, "ziele", "erreicht", {
       formTitle: "Saisonziel hinzufügen", fieldLabel: "Ziel", placeholder: "z. B. Aufstieg in die Kreisliga A",
       addBtnLabel: "Ziel hinzufügen", emptyErr: "Bitte ein Ziel angeben.", addToast: "Ziel hinzugefügt.",
       listTitle: "Ziele", emptyText: "Noch keine Ziele eingetragen.",
       doneEmoji: "✅", openEmoji: "🎯", doneLabel: "Erreicht", undoLabel: "Zurücksetzen",
       deleteTitle: "Ziel entfernen", deleteToast: "Ziel entfernt."
-    });
-    wrap.appendChild(zieleSection);
-
+    }));
     return wrap;
   }
 
