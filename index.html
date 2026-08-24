@@ -369,7 +369,7 @@
   }
 
   var state = defaultState();
-  var session = { vmId:null, clubId:null, tab:"kader", activeSlot:null, vereinserfolgeView:null };
+  var session = { vmId:null, clubId:null, tab:"kader", activeSlot:null, vereinserfolgeView:null, infoView:null };
 
   function persist(){
     var json = JSON.stringify(state);
@@ -690,11 +690,11 @@
   function renderTabs(){
     var tabs = document.createElement("div");
     tabs.className = "tabs";
-    [["verein","Eckdaten"],["vereinserfolge","Vereinserfolge"],["kader","Kader"],["you","You"],["aufstellung","Aufstellung"],["ziele","Saison"]].forEach(function(t){
+    [["verein","Info"],["kader","Kader"],["you","You"],["aufstellung","Aufstellung"],["ziele","Saison"]].forEach(function(t){
       var b = document.createElement("button");
       b.textContent = t[1];
       if(session.tab===t[0]) b.className = "active";
-      b.addEventListener("click", function(){ session.tab = t[0]; session.activeSlot=null; session.vereinserfolgeView=null; render(); });
+      b.addEventListener("click", function(){ session.tab = t[0]; session.activeSlot=null; session.vereinserfolgeView=null; session.infoView=null; render(); });
       tabs.appendChild(b);
     });
     return tabs;
@@ -706,9 +706,8 @@
     if(session.tab==="kader") wrap.appendChild(renderKader());
     else if(session.tab==="you") wrap.appendChild(renderYou());
     else if(session.tab==="aufstellung") wrap.appendChild(renderAufstellung());
-    else if(session.tab==="vereinserfolge") wrap.appendChild(renderVereinserfolgeTab());
     else if(session.tab==="ziele") wrap.appendChild(renderSaisonTab());
-    else wrap.appendChild(renderVereinSettings());
+    else wrap.appendChild(renderInfoTab());
     return wrap;
   }
 
@@ -1420,7 +1419,26 @@
     return wrap;
   }
 
-  /* ============ Info tab (Vereinsdaten) ============ */
+  /* ============ Info tab (Eckdaten/Vereinserfolge-Toggle) ============ */
+  function renderInfoTab(){
+    var view = session.infoView || "eckdaten";
+    var wrap = document.createElement("div");
+    var toggle = document.createElement("div");
+    toggle.className = "tabbar";
+    toggle.style.maxWidth = "360px";
+    toggle.style.marginBottom = "20px";
+    [["eckdaten","Eckdaten"],["vereinserfolge","Vereinserfolge"]].forEach(function(v){
+      var b = document.createElement("button");
+      b.textContent = v[1];
+      if(view === v[0]) b.className = "active";
+      b.addEventListener("click", function(){ session.infoView = v[0]; render(); });
+      toggle.appendChild(b);
+    });
+    wrap.appendChild(toggle);
+    wrap.appendChild(view === "eckdaten" ? renderVereinSettings() : renderVereinserfolgeTab());
+    return wrap;
+  }
+
   function renderVereinSettings(){
     var club = currentClub();
     var wrap = document.createElement("div");
