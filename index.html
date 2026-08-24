@@ -1044,6 +1044,113 @@
     { titel:"💡 Tipps", desc:"Persönliche Trainings- und Entwicklungstipps – folgt später." }
   ];
 
+  function xpForLevel(level){ return Math.round(100 * Math.pow(1.8, level)); }
+  function computeLevelFromXP(totalXp){
+    var level = 0, rem = totalXp || 0;
+    while(level < 10){
+      var needed = xpForLevel(level);
+      if(rem < needed) break;
+      rem -= needed;
+      level++;
+    }
+    return { level: level, xpInLevel: rem, xpNeeded: level < 10 ? xpForLevel(level) : null };
+  }
+  function levelBarHtml(xp){
+    var lv = computeLevelFromXP(xp);
+    var pct = lv.xpNeeded ? Math.round((lv.xpInLevel / lv.xpNeeded) * 100) : 100;
+    return (
+      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">' +
+        '<span style="font-size:11px;color:var(--chalk-dim);">Level</span>' +
+        '<span class="mono" style="font-size:12px;color:var(--gold);font-weight:700;">' + lv.level + (lv.level>=10?" · MAX":"") + '</span>' +
+      '</div>' +
+      '<div style="height:6px;border-radius:4px;background:var(--ink-2);overflow:hidden;">' +
+        '<div style="height:100%;width:' + pct + '%;background:var(--gold);"></div>' +
+      '</div>' +
+      '<div style="font-size:10.5px;color:var(--chalk-dim);margin-top:3px;">' +
+        (lv.xpNeeded ? (lv.xpInLevel + ' / ' + lv.xpNeeded + ' XP') : (xp + ' XP')) +
+      '</div>'
+    );
+  }
+
+  function renderFaehigkeitenSection(vm){
+    vm.faehigkeiten = vm.faehigkeiten || [];
+    var items = vm.faehigkeiten;
+    var section = document.createElement("div");
+    section.className = "kader-layout";
+
+    var formCard = document.createElement("div");
+    formCard.className = "card";
+    formCard.innerHTML =
+      '<h3>Fähigkeit hinzufügen</h3>' +
+      '<p class="hint" style="margin:0 0 14px;">Läuft später synchron mit YuYu unter Lebensbereich „Arbeit" – bis dahin hier manuell pflegbar.</p>';
+    var form = document.createElement("form");
+    form.className = "inline";
+    form.innerHTML =
+      '<div class="field"><label>Name</label><input type="text" id="faName" placeholder="z. B. Spanisch" required></div>' +
+      '<div class="form-msg" id="faMsg"></div>' +
+      '<button type="submit" class="btn btn-primary">Fähigkeit hinzufügen</button>';
+    formCard.appendChild(form);
+
+    form.addEventListener("submit", function(e){
+      e.preventDefault();
+      var name = form.querySelector("#faName").value.trim();
+      var msg = form.querySelector("#faMsg");
+      if(!name){ msg.textContent = "Bitte einen Namen angeben."; return; }
+      items.push({ id: uid(), name: name, xp: 0 });
+      persist();
+      render();
+      showToast("Fähigkeit hinzugefügt.");
+    });
+
+    var listCard = document.createElement("div");
+    listCard.className = "card";
+    listCard.innerHTML = '<h3>Fähigkeiten (' + items.length + ')</h3>';
+    if(items.length === 0){
+      var empty = document.createElement("div");
+      empty.className = "empty-note";
+      empty.textContent = "Noch keine Fähigkeiten eingetragen.";
+      listCard.appendChild(empty);
+    } else {
+      var list = document.createElement("div");
+      list.style.display = "flex";
+      list.style.flexDirection = "column";
+      list.style.gap = "10px";
+      items.forEach(function(item){
+        var row = document.createElement("div");
+        row.style.background = "var(--ink)";
+        row.style.border = "1px solid var(--line)";
+        row.style.borderRadius = "8px";
+        row.style.padding = "10px 12px";
+        row.innerHTML =
+          '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">' +
+            '<span style="font-size:13px;font-weight:600;">' + esc(item.name) + '</span>' +
+            '<button class="del-x" title="Fähigkeit entfernen">✕</button>' +
+          '</div>' +
+          levelBarHtml(item.xp) +
+          '<input type="number" min="0" class="fa-xp" style="margin-top:8px;width:100%;background:var(--ink-2);border:1px solid var(--line);color:var(--chalk);padding:6px 8px;border-radius:6px;font-size:13px;">';
+        var xpInput = row.querySelector(".fa-xp");
+        xpInput.value = item.xp;
+        xpInput.addEventListener("change", function(){
+          item.xp = Math.max(0, Number(xpInput.value) || 0);
+          persist();
+          render();
+        });
+        row.querySelector(".del-x").addEventListener("click", function(){
+          vm.faehigkeiten = vm.faehigkeiten.filter(function(x){ return x.id !== item.id; });
+          persist();
+          render();
+          showToast("Fähigkeit entfernt.");
+        });
+        list.appendChild(row);
+      });
+      listCard.appendChild(list);
+    }
+
+    section.appendChild(formCard);
+    section.appendChild(listCard);
+    return section;
+  }
+
   function renderPifaLinkCard(){
     var card = document.createElement("div");
     card.className = "card";
@@ -1126,6 +1233,9 @@
   function renderYou(){
     var wrap = document.createElement("div");
     wrap.appendChild(renderPifaLinkCard());
+    var faehigkeitenSection = renderFaehigkeitenSection(currentVm());
+    faehigkeitenSection.style.marginTop = "26px";
+    wrap.appendChild(faehigkeitenSection);
     return wrap;
   }
 
