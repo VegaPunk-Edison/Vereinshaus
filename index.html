@@ -456,6 +456,7 @@
       '<div class="brand"><div class="mark">KM</div><div class="title">Kadermeister</div></div>' +
       '<div class="topbar-right">' +
         (session.clubId ? '<button class="btn btn-small" id="btnSwitchClub">Vereine wechseln</button>' : '') +
+        '<button class="btn btn-ghost btn-small" id="btnRewardStore" disabled title="Reward Store – kommt nach der PIFA-eSports-Verknüpfung">🎁</button>' +
         '<button class="btn btn-small" id="btnExport" title="Alle Daten als Datei herunterladen">⬇ Sichern</button>' +
         '<button class="btn btn-small" id="btnImport" title="Zuvor gesicherte Datei wieder laden">⬆ Laden</button>' +
         '<span>Angemeldet als <strong>' + esc(vm ? vm.name : "") + '</strong></span>' +
@@ -1037,8 +1038,7 @@
   var PIFA_SYNC_TILES = [
     { titel:"Career-Attribute", desc:"PAC · SHO · PAS · DRI · DEF · PHY – ergeben dein Transfermarkt-Level." },
     { titel:"Persönlichkeits-Level", desc:"Fitness, Tugend, Gewohnheiten – je 0–100." },
-    { titel:"Karriereziele & Meilensteine", desc:"Eigene Ziele mit Status, plus erreichte Meilensteine." },
-    { titel:"🔒 Reward Store", desc:"XP gegen Prämien im PIFA-Store eintauschen." }
+    { titel:"Karriereziele & Meilensteine", desc:"Eigene Ziele mit Status, plus erreichte Meilensteine." }
   ];
 
   function renderPifaLinkCard(){
