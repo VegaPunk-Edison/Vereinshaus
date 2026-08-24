@@ -690,7 +690,7 @@
   function renderTabs(){
     var tabs = document.createElement("div");
     tabs.className = "tabs";
-    [["verein","Info"],["kader","Kader"],["aufstellung","Aufstellung"],["erfolge","Erfolge"],["you","You"],["ziele","Ziele"],["todos","To-Do's"]].forEach(function(t){
+    [["verein","Info"],["kader","Kader"],["you","You"],["aufstellung","Aufstellung"],["erfolge","Erfolge"],["ziele","Saison"]].forEach(function(t){
       var b = document.createElement("button");
       b.textContent = t[1];
       if(session.tab===t[0]) b.className = "active";
@@ -704,11 +704,10 @@
     var wrap = document.createElement("div");
     wrap.className = "workarea";
     if(session.tab==="kader") wrap.appendChild(renderKader());
+    else if(session.tab==="you") wrap.appendChild(renderYou());
     else if(session.tab==="aufstellung") wrap.appendChild(renderAufstellung());
     else if(session.tab==="erfolge") wrap.appendChild(renderErfolge());
-    else if(session.tab==="you") wrap.appendChild(renderYou());
-    else if(session.tab==="ziele") wrap.appendChild(renderZieleTab());
-    else if(session.tab==="todos") wrap.appendChild(renderTodosTab());
+    else if(session.tab==="ziele") wrap.appendChild(renderSaisonTab());
     else wrap.appendChild(renderVereinSettings());
     return wrap;
   }
@@ -1161,19 +1160,37 @@
         '<div style="font-size:24px;">🔗</div>' +
         '<div style="flex:1;">' +
           '<div style="font-weight:600;font-size:13.5px;">Nicht mit PIFA eSports verknüpft</div>' +
-          '<div style="color:var(--chalk-dim);font-size:12.5px;margin-top:2px;">Die Tabs „Ziele" und „To-Dos" funktionieren hier komplett eigenständig. Verknüpfen ist optional – dann laufen sie synchron mit PIFA eSports, ohne doppelte Eingabe.</div>' +
+          '<div style="color:var(--chalk-dim);font-size:12.5px;margin-top:2px;">Deine persönlichen Aufgaben &amp; Ziele hier funktionieren komplett eigenständig. Verknüpfen ist optional – dann laufen sie synchron mit PIFA eSports, ohne doppelte Eingabe.</div>' +
         '</div>' +
         '<button class="btn btn-small" disabled title="Kommt bald">Verknüpfen</button>' +
       '</div>' +
       '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;">' +
-        PIFA_SYNC_TILES.map(function(t){
-          return '<div style="background:var(--ink);border:1px solid var(--line);border-radius:10px;padding:14px;opacity:.55;">' +
+        PIFA_SYNC_TILES.map(function(t, i){
+          return '<div data-tile-idx="' + i + '" style="cursor:pointer;background:var(--ink);border:1px solid var(--line);border-radius:10px;padding:14px;opacity:.55;">' +
             '<div style="font-size:11px;color:var(--chalk-dim);margin-bottom:6px;text-transform:uppercase;letter-spacing:.03em;">' + esc(t.titel) + '</div>' +
             '<div style="font-size:11.5px;color:var(--chalk-dim);line-height:1.5;">' + esc(t.desc) + '</div>' +
           '</div>';
         }).join("") +
       '</div>';
+    card.querySelectorAll("[data-tile-idx]").forEach(function(el){
+      el.addEventListener("click", function(){
+        var t = PIFA_SYNC_TILES[Number(el.getAttribute("data-tile-idx"))];
+        showInfoModal(t.titel, [t.desc, "🔒 Läuft synchron, sobald du dich mit PIFA eSports verknüpfst."]);
+      });
+    });
     return card;
+  }
+
+  function showInfoModal(title, lines){
+    var backdrop = document.createElement("div");
+    backdrop.className = "modal-backdrop";
+    backdrop.innerHTML =
+      '<div class="modal"><h2>' + esc(title) + '</h2>' +
+      lines.map(function(l){ return '<p class="sub" style="margin:0 0 8px;">' + esc(l) + '</p>'; }).join("") +
+      '<div class="modal-actions"><button type="button" class="btn" id="closeInfoModal">Schließen</button></div></div>';
+    document.body.appendChild(backdrop);
+    backdrop.querySelector("#closeInfoModal").addEventListener("click", function(){ backdrop.remove(); });
+    backdrop.addEventListener("click", function(e){ if(e.target===backdrop) backdrop.remove(); });
   }
 
   function renderTrophaeenSection(club){
@@ -1195,6 +1212,7 @@
       item.style.alignItems = "center";
       item.style.width = "84px";
       item.style.textAlign = "center";
+      item.style.cursor = "pointer";
       item.title = def.desc + (def.note ? " " + def.note : "");
       var circle = document.createElement("div");
       circle.style.width = "60px";
@@ -1224,6 +1242,13 @@
       label.textContent = def.titel;
       item.appendChild(circle);
       item.appendChild(label);
+      item.addEventListener("click", function(){
+        var lines = [def.desc];
+        if(unlocked) lines.push("✅ Freigeschaltet");
+        else if(def.note) lines.push("🔒 " + def.note);
+        else lines.push("🔒 Noch nicht freigeschaltet.");
+        showInfoModal(def.titel, lines);
+      });
       grid.appendChild(item);
     });
     card.appendChild(grid);
@@ -1233,30 +1258,50 @@
   function renderYou(){
     var wrap = document.createElement("div");
     wrap.appendChild(renderPifaLinkCard());
-    var faehigkeitenSection = renderFaehigkeitenSection(currentVm());
+    var vm = currentVm();
+
+    var persoenlicheAufgaben = buildChecklistSection(vm, "persoenlicheTodos", "done", {
+      formTitle: "Persönliche Aufgabe hinzufügen", fieldLabel: "Aufgabe", placeholder: "z. B. Laufplan aktualisieren",
+      addBtnLabel: "Aufgabe hinzufügen", emptyErr: "Bitte eine Aufgabe angeben.", addToast: "Aufgabe hinzugefügt.",
+      listTitle: "Persönliche Aufgaben", emptyText: "Noch keine persönlichen Aufgaben eingetragen.",
+      doneEmoji: "✅", openEmoji: "☐", doneLabel: "Erledigt", undoLabel: "Zurücksetzen",
+      deleteTitle: "Aufgabe entfernen", deleteToast: "Aufgabe entfernt."
+    });
+    persoenlicheAufgaben.style.marginTop = "26px";
+    wrap.appendChild(persoenlicheAufgaben);
+
+    var persoenlicheZiele = buildChecklistSection(vm, "persoenlicheZiele", "erreicht", {
+      formTitle: "Persönliches Ziel hinzufügen", fieldLabel: "Ziel", placeholder: "z. B. 10.000 Schritte täglich",
+      addBtnLabel: "Ziel hinzufügen", emptyErr: "Bitte ein Ziel angeben.", addToast: "Ziel hinzugefügt.",
+      listTitle: "Persönliche Ziele", emptyText: "Noch keine persönlichen Ziele eingetragen.",
+      doneEmoji: "✅", openEmoji: "🎯", doneLabel: "Erreicht", undoLabel: "Zurücksetzen",
+      deleteTitle: "Ziel entfernen", deleteToast: "Ziel entfernt."
+    });
+    persoenlicheZiele.style.marginTop = "26px";
+    wrap.appendChild(persoenlicheZiele);
+
+    var faehigkeitenSection = renderFaehigkeitenSection(vm);
     faehigkeitenSection.style.marginTop = "26px";
     wrap.appendChild(faehigkeitenSection);
     return wrap;
   }
 
-  function renderTodosTab(){
+  function renderSaisonTab(){
     var club = currentClub();
     club.todos = club.todos || [];
+    club.ziele = club.ziele || [];
     var wrap = document.createElement("div");
-    wrap.appendChild(buildChecklistSection(club, "todos", "done", {
+
+    var todosSection = buildChecklistSection(club, "todos", "done", {
       formTitle: "Aufgabe hinzufügen", fieldLabel: "Aufgabe", placeholder: "z. B. Trikots bestellen",
       addBtnLabel: "Aufgabe hinzufügen", emptyErr: "Bitte eine Aufgabe angeben.", addToast: "Aufgabe hinzugefügt.",
       listTitle: "Aufgaben", emptyText: "Noch keine Aufgaben eingetragen.",
       doneEmoji: "✅", openEmoji: "☐", doneLabel: "Erledigt", undoLabel: "Zurücksetzen",
       deleteTitle: "Aufgabe entfernen", deleteToast: "Aufgabe entfernt."
-    }));
-    return wrap;
-  }
+    });
+    todosSection.style.marginBottom = "26px";
+    wrap.appendChild(todosSection);
 
-  function renderZieleTab(){
-    var club = currentClub();
-    club.ziele = club.ziele || [];
-    var wrap = document.createElement("div");
     wrap.appendChild(buildChecklistSection(club, "ziele", "erreicht", {
       formTitle: "Saisonziel hinzufügen", fieldLabel: "Ziel", placeholder: "z. B. Aufstieg in die Kreisliga A",
       addBtnLabel: "Ziel hinzufügen", emptyErr: "Bitte ein Ziel angeben.", addToast: "Ziel hinzugefügt.",
@@ -1264,16 +1309,19 @@
       doneEmoji: "✅", openEmoji: "🎯", doneLabel: "Erreicht", undoLabel: "Zurücksetzen",
       deleteTitle: "Ziel entfernen", deleteToast: "Ziel entfernt."
     }));
+
     return wrap;
   }
 
-  function renderVereinserfolgeSection(club){
+  function renderVereinserfolgeSection(club, editable){
     club.erfolge = club.erfolge || {};
     var card = document.createElement("div");
     card.className = "card";
     card.innerHTML =
       '<h3>Vereinserfolge</h3>' +
-      '<p style="color:var(--chalk-dim);font-size:13.5px;line-height:1.6;margin:0 0 16px;">Feste Liste offizieller Vereinsehrungen – anklicken, um sie mit Jahr als erreicht einzutragen.</p>';
+      '<p style="color:var(--chalk-dim);font-size:13.5px;line-height:1.6;margin:0 0 16px;">' +
+      (editable ? "Feste Liste offizieller Vereinsehrungen – anklicken, um sie mit Jahr als erreicht einzutragen." : "Feste Liste offizieller Vereinsehrungen. Bearbeiten im Tab Info.") +
+      '</p>';
     var grid = document.createElement("div");
     grid.style.display = "flex";
     grid.style.flexWrap = "wrap";
@@ -1324,14 +1372,21 @@
       item.appendChild(label);
       item.appendChild(yearLabel);
       item.addEventListener("click", function(){
-        session.activeErfolg = session.activeErfolg === def.id ? null : def.id;
-        render();
+        if(editable){
+          session.activeErfolg = session.activeErfolg === def.id ? null : def.id;
+          render();
+        } else {
+          var lines = [def.desc];
+          lines.push(earned ? ("🏆 Erreicht " + jahr) : "Noch nicht erreicht.");
+          lines.push("Bearbeiten im Tab Info.");
+          showInfoModal(def.titel, lines);
+        }
       });
       grid.appendChild(item);
     });
     card.appendChild(grid);
 
-    if(session.activeErfolg){
+    if(editable && session.activeErfolg){
       var activeDef = VEREINSERFOLG_DEFS.find(function(d){ return d.id === session.activeErfolg; });
       var current = club.erfolge[activeDef.id];
       var editor = document.createElement("div");
@@ -1384,7 +1439,7 @@
     var wrap = document.createElement("div");
 
     wrap.appendChild(renderTrophaeenSection(club));
-    wrap.appendChild(renderVereinserfolgeSection(club));
+    wrap.appendChild(renderVereinserfolgeSection(club, false));
 
     return wrap;
   }
@@ -1397,7 +1452,7 @@
 
     var infoCard = document.createElement("div");
     infoCard.className = "card";
-    infoCard.innerHTML = '<h3>Vereinsdaten bearbeiten</h3>';
+    infoCard.innerHTML = '<h3>Eckdaten</h3>';
     var form = document.createElement("form");
     form.className = "inline";
     form.innerHTML =
@@ -1522,7 +1577,13 @@
 
     wrap.appendChild(infoCard);
     wrap.appendChild(dangerCard);
-    return wrap;
+
+    var page = document.createElement("div");
+    page.appendChild(wrap);
+    var vereinserfolgeSection = renderVereinserfolgeSection(club, true);
+    vereinserfolgeSection.style.marginTop = "26px";
+    page.appendChild(vereinserfolgeSection);
+    return page;
   }
 
   /* ============ Export / Import ============ */
