@@ -359,6 +359,14 @@
 
   /* ============ Speicher ============ */
   var hasWindowStorage = typeof window.storage !== "undefined" && window.storage;
+  var hasLocalStorage = (function(){
+    try {
+      var k = "__km_test__";
+      localStorage.setItem(k, "1");
+      localStorage.removeItem(k);
+      return true;
+    } catch(e){ return false; }
+  })();
   var memoryFallback = { value: null };
   var STORE_KEY = "kadermeister-data";
 
@@ -375,6 +383,8 @@
     var json = JSON.stringify(state);
     if(hasWindowStorage){
       window.storage.set(STORE_KEY, json, false).catch(function(){ showToast("Speichern fehlgeschlagen."); });
+    } else if(hasLocalStorage){
+      try { localStorage.setItem(STORE_KEY, json); } catch(e){ showToast("Speichern fehlgeschlagen."); }
     } else {
       memoryFallback.value = json;
     }
@@ -388,6 +398,12 @@
         }
         cb();
       }).catch(function(){ cb(); });
+    } else if(hasLocalStorage){
+      try {
+        var raw = localStorage.getItem(STORE_KEY);
+        if(raw){ try { state = JSON.parse(raw); } catch(e){ state = defaultState(); } }
+      } catch(e){}
+      cb();
     } else {
       if(memoryFallback.value){
         try { state = JSON.parse(memoryFallback.value); } catch(e){ state = defaultState(); }
@@ -441,8 +457,8 @@
   function renderStorageNote(){
     var div = document.createElement("div");
     div.className = "storage-note";
-    div.textContent = hasWindowStorage
-      ? "Daten werden automatisch gespeichert."
+    div.textContent = (hasWindowStorage || hasLocalStorage)
+      ? "Daten werden automatisch in diesem Browser gespeichert und bleiben auch nach dem Schließen erhalten."
       : "Hinweis: Diese Sitzung läuft ohne dauerhaften Speicher – Daten gehen beim Neuladen der Seite verloren.";
     return div;
   }
