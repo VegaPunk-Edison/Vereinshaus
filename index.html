@@ -1565,17 +1565,35 @@
 
   /* ============ Export / Import ============ */
   function exportData(){
-    var blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
-    var url = URL.createObjectURL(blob);
-    var a = document.createElement("a");
     var ts = new Date().toISOString().slice(0,10);
-    a.href = url;
-    a.download = "kadermeister-daten-" + ts + ".json";
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
-    showToast("Daten wurden heruntergeladen.");
+    var filename = "kadermeister-daten-" + ts + ".json";
+    var jsonStr = JSON.stringify(state, null, 2);
+
+    function fallbackDownload(){
+      var blob = new Blob([jsonStr], { type: "application/json" });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+      showToast("Daten wurden heruntergeladen.");
+    }
+
+    if(window.claude && typeof window.claude.use === "function"){
+      window.claude.use("downloads").then(function(downloads){
+        if(!downloads){ fallbackDownload(); return; }
+        downloads.save({ filename: filename, data: jsonStr }).then(function(){
+          showToast("Daten wurden heruntergeladen.");
+        }).catch(function(err){
+          showToast(err && err.code === "declined" ? "Download abgebrochen." : "Download fehlgeschlagen.");
+        });
+      }).catch(function(){ fallbackDownload(); });
+    } else {
+      fallbackDownload();
+    }
   }
 
   function importDataFromFile(file){
