@@ -1357,7 +1357,7 @@
       '<p class="sub">' + player.position + ' – ' + POSITIONS[player.position] + (player.nummer!=null ? ' · #' + player.nummer : '') + '</p>' +
       '<div class="tabbar">' +
         '<button type="button" data-tab="attrs" class="active">Attribute</button>' +
-        '<button type="button" data-tab="otgs">OTGs</button>' +
+        '<button type="button" data-tab="otgs">OTG\'s</button>' +
         '<button type="button" data-tab="stats">Stats</button>' +
       '</div>' +
       '<div id="playerModalBody"></div>' +
@@ -1561,7 +1561,7 @@
       if(goals.length === 0){
         var empty = document.createElement("div");
         empty.className = "empty-note";
-        empty.textContent = "Noch keine OTGs für " + player.position + " (" + POSITIONS[player.position] + ") – lege sie im Saison-Tab an.";
+        empty.textContent = "Noch keine OTG's für " + player.position + " (" + POSITIONS[player.position] + ") – lege sie im Saison-Tab an.";
         wrap.appendChild(empty);
         return wrap;
       }
@@ -1731,7 +1731,7 @@
   function buildPositionOtgsSection(club){
     var card = document.createElement("div");
     card.className = "card";
-    card.innerHTML = '<h3>OTG<span style="text-transform:lowercase;">s</span></h3>';
+    card.innerHTML = '<h3>OTG\'s</h3>';
 
     var form = document.createElement("form");
     form.className = "inline";
@@ -1762,7 +1762,7 @@
       var empty = document.createElement("div");
       empty.className = "empty-note";
       empty.style.marginTop = "16px";
-      empty.textContent = "Noch keine OTGs festgelegt. Spieler sehen diese automatisch entsprechend ihrer Position in ihrer Detailansicht.";
+      empty.textContent = "Noch keine OTG's festgelegt. Spieler sehen diese automatisch entsprechend ihrer Position in ihrer Detailansicht.";
       card.appendChild(empty);
     } else {
       var groupsWrap = document.createElement("div");
