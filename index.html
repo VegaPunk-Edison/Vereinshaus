@@ -155,6 +155,7 @@
   .modal{
     background:var(--ink-2);border:1px solid var(--line);border-radius:14px;padding:28px;
     width:100%;max-width:440px;box-shadow:var(--shadow);
+    max-height:calc(100vh - 32px);overflow-y:auto;
   }
   .modal h2{font-size:19px;margin:0 0 4px;}
   .modal .sub{color:var(--chalk-dim);font-size:12.5px;margin:0 0 18px;}
@@ -299,8 +300,90 @@
   };
   function defaultPlayerAttrs(){
     var attrs = {};
-    Object.keys(PLAYER_ATTRS).forEach(function(k){ attrs[k] = 50; });
+    Object.keys(PLAYER_ATTRS).forEach(function(k){ attrs[k] = { level: 0, xp: 0 }; });
     return attrs;
+  }
+  function normalizePlayerAttrs(attrs){
+    var out = {};
+    Object.keys(PLAYER_ATTRS).forEach(function(k){
+      var v = attrs ? attrs[k] : null;
+      if(v && typeof v === "object"){ out[k] = { level: v.level || 0, xp: v.xp || 0 }; }
+      else if(typeof v === "number"){ out[k] = { level: v, xp: 0 }; }
+      else { out[k] = { level: 0, xp: 0 }; }
+    });
+    return out;
+  }
+  /* XP-System 1:1 übernommen aus PIFA eSports (KarriereDetail.tsx: calcRawXP/submitGame),
+     ohne die Screenshot-Erkennung – nur manuelles "Spiel eintragen". */
+  var GAME_STAT_FIELDS = {
+    SHO: [
+      { key:"schussgenauigkeit", label:"Schussgenauigkeit", unit:"%", type:"pct" },
+      { key:"torschuesse", label:"Torschüsse", type:"cnt" },
+      { key:"tore", label:"Tore", type:"cnt" }
+    ],
+    PAS: [
+      { key:"passquote", label:"Passquote", unit:"%", type:"pct" },
+      { key:"erfolgreiche_paesse", label:"Erfolgreiche Pässe", type:"cnt" },
+      { key:"schluesselpaesse", label:"Schlüsselpässe / Vorlagen", type:"cnt" }
+    ],
+    PAC: [
+      { key:"sprintgeschwindigkeit", label:"Sprintgeschwindigkeit", unit:"km/h", type:"spd" },
+      { key:"sprintdistanz", label:"Sprintdistanz", unit:"m", type:"dist" },
+      { key:"gesamtdistanz_pac", label:"Gesamtdistanz", unit:"m", type:"dist" }
+    ],
+    DRI: [
+      { key:"dribbling_erfolgsrate", label:"Dribbling-Erfolgsrate", unit:"%", type:"pct" },
+      { key:"versuchte_dribblings", label:"Versuchte Dribblings", type:"cnt" },
+      { key:"erfolgreiche_dribblings", label:"Erfolgreiche Dribblings", type:"cnt" }
+    ],
+    DEF: [
+      { key:"zweikampfquote", label:"Zweikampfquote", unit:"%", type:"pct" },
+      { key:"erfolgreiche_zweikaempfe", label:"Erfolgreiche Zweikämpfe", type:"cnt" },
+      { key:"klaerungsaktionen", label:"Klärungsaktionen", type:"cnt" },
+      { key:"abgefangene_paesse", label:"Abgefangene Pässe", type:"cnt" },
+      { key:"balleroberungen", label:"Balleroberungen", type:"cnt" },
+      { key:"geblockte_schuesse", label:"Geblockte Schüsse", type:"cnt" }
+    ],
+    PHY: [
+      { key:"max_sprint", label:"Max. Sprintgeschwindigkeit", unit:"km/h", type:"spd" },
+      { key:"durchschn_sprintdistanz", label:"Durchschn. Sprintdistanz", unit:"m", type:"dist" },
+      { key:"anzahl_sprints", label:"Anzahl Sprints", type:"cnt" },
+      { key:"gesamtdistanz_phy", label:"Gesamtdistanz", unit:"m", type:"dist" },
+      { key:"hoechstgeschwindigkeit", label:"Höchstgeschwindigkeit", unit:"km/h", type:"spd" }
+    ]
+  };
+  function statXpValue(type, v){
+    var n = Number(v) || 0;
+    if(type==="pct") return n * 0.005;
+    if(type==="cnt") return n * 0.05;
+    if(type==="dist") return (n/100) * 0.005;
+    if(type==="spd") return Math.max(0, n-20) * 0.01;
+    return 0;
+  }
+  function calcRawAttrXP(gameStats){
+    var raw = {};
+    Object.keys(GAME_STAT_FIELDS).forEach(function(attrKey){
+      var sum = 0;
+      GAME_STAT_FIELDS[attrKey].forEach(function(f){ sum += statXpValue(f.type, gameStats[f.key]); });
+      raw[attrKey] = sum;
+    });
+    return raw;
+  }
+  function applyGameXP(player, gameStats){
+    var raw = calcRawAttrXP(gameStats);
+    var totalLevel = 0;
+    Object.keys(player.attrs).forEach(function(k){ totalLevel += player.attrs[k].level; });
+    var multiplier = Math.max(0.1, 1 / (1 + totalLevel/100));
+    var levelUps = [];
+    Object.keys(player.attrs).forEach(function(k){
+      var gained = (raw[k] || 0) * multiplier;
+      var a = player.attrs[k];
+      var xp = a.xp + gained;
+      var level = a.level;
+      while(xp >= 200 && level < 120){ xp -= 200; level++; levelUps.push(k); }
+      a.level = level; a.xp = xp;
+    });
+    return levelUps;
   }
   /* Übernommen aus PIFA eSports (fussballStats.ts) – Kadermeister-Stats bleiben
      eigenständig erfasst, keine Verknüpfung/Synchronisierung mit PIFA. */
@@ -1266,7 +1349,7 @@
   }
 
   function showPlayerModal(club, player){
-    player.attrs = player.attrs || defaultPlayerAttrs();
+    player.attrs = normalizePlayerAttrs(player.attrs);
     player.otgs = player.otgs || [];
     player.stats = player.stats || defaultPlayerStats();
 
@@ -1309,30 +1392,101 @@
 
     function buildAttrsTab(){
       var wrap = document.createElement("div");
-      var fieldsHtml = "";
-      var keys = Object.keys(PLAYER_ATTRS);
-      for(var i=0; i<keys.length; i+=2){
-        fieldsHtml += '<div class="row-2">';
-        for(var j=i; j<Math.min(i+2, keys.length); j++){
-          var k = keys[j];
-          fieldsHtml +=
-            '<div class="field"><label>' + k + ' – ' + PLAYER_ATTRS[k] + '</label>' +
-            '<input type="number" min="0" max="99" class="pa-input" data-key="' + k + '" value="' + player.attrs[k] + '"></div>';
-        }
-        fieldsHtml += '</div>';
-      }
-      wrap.innerHTML = fieldsHtml + '<button type="button" class="btn btn-primary" id="savePlayerAttrs" style="margin-top:8px;">Speichern</button>';
-      wrap.querySelector("#savePlayerAttrs").addEventListener("click", function(){
-        var newAttrs = {};
-        wrap.querySelectorAll(".pa-input").forEach(function(input){
-          newAttrs[input.dataset.key] = Math.max(0, Math.min(99, Number(input.value) || 0));
+      var showGameForm = false;
+      var gameInput = {};
+
+      var cardsHost = document.createElement("div");
+      var formHost = document.createElement("div");
+      var toggleBtn = document.createElement("button");
+      toggleBtn.type = "button";
+      toggleBtn.className = "btn btn-primary";
+      toggleBtn.style.width = "100%";
+      toggleBtn.style.marginBottom = "10px";
+      var resetBtn = document.createElement("button");
+      resetBtn.type = "button";
+      resetBtn.className = "btn btn-ghost";
+      resetBtn.style.width = "100%";
+      resetBtn.style.fontSize = "13px";
+      resetBtn.style.color = "#e79aa1";
+      resetBtn.textContent = "🗑️ Erfahrung zurücksetzen";
+
+      wrap.appendChild(cardsHost);
+      wrap.appendChild(toggleBtn);
+      wrap.appendChild(resetBtn);
+      wrap.appendChild(formHost);
+
+      function renderCards(){
+        var keys = Object.keys(PLAYER_ATTRS);
+        var html = '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px;">';
+        keys.forEach(function(k){
+          var a = player.attrs[k];
+          var pct = Math.max(0, Math.min(100, (a.xp/200)*100));
+          html +=
+            '<div style="background:var(--ink);border:1px solid var(--line);border-radius:10px;padding:12px 4px;text-align:center;">' +
+              '<div style="font-size:10px;color:var(--chalk-dim);letter-spacing:.05em;">' + k + '</div>' +
+              '<div style="font-size:24px;font-weight:700;color:var(--gold);line-height:1;margin:4px 0;">' + a.level + '</div>' +
+              '<div style="height:4px;background:var(--ink-2);border-radius:2px;overflow:hidden;margin-bottom:3px;">' +
+                '<div style="width:' + pct + '%;height:100%;background:var(--gold);"></div>' +
+              '</div>' +
+              '<div style="font-size:9px;color:var(--chalk-dim);">' + Math.round(a.xp) + '/200 XP</div>' +
+            '</div>';
         });
-        player.attrs = newAttrs;
-        persist();
-        backdrop.remove();
-        render();
-        showToast(player.name + " – Attribute gespeichert.");
+        html += '</div>';
+        cardsHost.innerHTML = html;
+      }
+
+      function renderForm(){
+        toggleBtn.textContent = showGameForm ? "✕ Abbrechen" : "+ Spiel eintragen";
+        formHost.innerHTML = "";
+        if(!showGameForm) return;
+        var sectionsHtml = "";
+        Object.keys(GAME_STAT_FIELDS).forEach(function(attrKey){
+          var fields = GAME_STAT_FIELDS[attrKey];
+          sectionsHtml += '<div style="margin-bottom:16px;">' +
+            '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--gold);margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--line);">' +
+            esc(PLAYER_ATTRS[attrKey]) + ' (' + attrKey + ')</div>';
+          for(var i=0; i<fields.length; i+=2){
+            sectionsHtml += '<div class="row-2">';
+            for(var j=i; j<Math.min(i+2, fields.length); j++){
+              var f = fields[j];
+              sectionsHtml +=
+                '<div class="field"><label>' + esc(f.label) + (f.unit ? ' (' + esc(f.unit) + ')' : '') + '</label>' +
+                '<input type="number" min="0" class="gs-input" data-key="' + f.key + '" value="' + (gameInput[f.key] != null ? gameInput[f.key] : "") + '" placeholder="0"></div>';
+            }
+            sectionsHtml += '</div>';
+          }
+          sectionsHtml += '</div>';
+        });
+        formHost.innerHTML = sectionsHtml + '<button type="button" class="btn btn-primary" id="submitGameBtn" style="width:100%;justify-content:center;">XP berechnen &amp; speichern</button>';
+        formHost.querySelector("#submitGameBtn").addEventListener("click", function(){
+          formHost.querySelectorAll(".gs-input").forEach(function(input){
+            gameInput[input.dataset.key] = input.value;
+          });
+          var levelUps = applyGameXP(player, gameInput);
+          persist();
+          gameInput = {};
+          showGameForm = false;
+          renderCards();
+          renderForm();
+          showToast(levelUps.length > 0 ? "🎉 Level Up! " + levelUps.join(", ") : "Spiel gespeichert – XP gutgeschrieben.");
+        });
+      }
+
+      toggleBtn.addEventListener("click", function(){
+        showGameForm = !showGameForm;
+        renderForm();
       });
+
+      resetBtn.addEventListener("click", function(){
+        if(!confirm("Alle Attribute-Level und XP von " + player.name + " wirklich auf 0 zurücksetzen?")) return;
+        Object.keys(player.attrs).forEach(function(k){ player.attrs[k] = { level: 0, xp: 0 }; });
+        persist();
+        renderCards();
+        showToast("Erfahrung zurückgesetzt.");
+      });
+
+      renderCards();
+      renderForm();
       return wrap;
     }
 
