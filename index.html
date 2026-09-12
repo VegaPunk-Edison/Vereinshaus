@@ -294,6 +294,14 @@
     LM:"Linkes Mittelfeld", RM:"Rechtes Mittelfeld", LA:"Linksaußen", RA:"Rechtsaußen", MS:"Mittelstürmer"
   };
   var CLUB_COLORS = ["#b8434f","#e3b23c","#2f6f4e","#3f6fa8","#7a4fb0","#c46a2e","#2c9aa3","#8a8f98"];
+  var PLAYER_ATTRS = {
+    SHO:"Schuss", PAS:"Pass", DRI:"Dribbling", PAC:"Tempo", DEF:"Verteidigung", PHY:"Physis"
+  };
+  function defaultPlayerAttrs(){
+    var attrs = {};
+    Object.keys(PLAYER_ATTRS).forEach(function(k){ attrs[k] = 50; });
+    return attrs;
+  }
 
   var TROPHY_DEFS = [
     { titel:"Erste Schritte", desc:"Einen Vereinsmanager-Account erstellt.", type:"auto" },
@@ -757,7 +765,7 @@
       var pos = form.querySelector("#pPos").value;
       var msg = form.querySelector("#pMsg");
       if(!name){ msg.textContent = "Bitte einen Namen angeben."; return; }
-      club.players.push({ id: uid(), name: name, nummer: num ? Number(num) : null, position: pos });
+      club.players.push({ id: uid(), name: name, nummer: num ? Number(num) : null, position: pos, attrs: defaultPlayerAttrs() });
       persist();
       form.reset();
       render();
@@ -781,12 +789,15 @@
       var tbody = table.querySelector("tbody");
       club.players.slice().sort(function(a,b){ return (a.nummer||99)-(b.nummer||99); }).forEach(function(p){
         var tr = document.createElement("tr");
+        tr.style.cursor = "pointer";
+        tr.title = "Klicken für Spieler-Details";
         tr.innerHTML =
           '<td><span class="num-badge">' + (p.nummer!=null ? p.nummer : "–") + '</span></td>' +
           '<td>' + esc(p.name) + '</td>' +
           '<td><span class="pos-badge">' + p.position + '</span> <span style="color:var(--chalk-dim);font-size:12px;">' + POSITIONS[p.position] + '</span></td>' +
           '<td style="text-align:right;"><button class="del-x" title="Spieler entfernen">✕</button></td>';
-        tr.querySelector(".del-x").addEventListener("click", function(){
+        tr.querySelector(".del-x").addEventListener("click", function(e){
+          e.stopPropagation();
           club.players = club.players.filter(function(pl){ return pl.id!==p.id; });
           Object.keys(club.formation.slots).forEach(function(slotId){
             if(club.formation.slots[slotId]===p.id) delete club.formation.slots[slotId];
@@ -794,6 +805,10 @@
           persist();
           render();
           showToast(p.name + " wurde entfernt.");
+        });
+        tr.addEventListener("click", function(e){
+          if(e.target.closest(".del-x")) return;
+          showPlayerModal(club, p);
         });
         tbody.appendChild(tr);
       });
@@ -1178,6 +1193,48 @@
     document.body.appendChild(backdrop);
     backdrop.querySelector("#closeInfoModal").addEventListener("click", function(){ backdrop.remove(); });
     backdrop.addEventListener("click", function(e){ if(e.target===backdrop) backdrop.remove(); });
+  }
+
+  function showPlayerModal(club, player){
+    var attrs = player.attrs || defaultPlayerAttrs();
+    var backdrop = document.createElement("div");
+    backdrop.className = "modal-backdrop";
+    var fieldsHtml = "";
+    var keys = Object.keys(PLAYER_ATTRS);
+    for(var i=0; i<keys.length; i+=2){
+      fieldsHtml += '<div class="row-2">';
+      for(var j=i; j<Math.min(i+2, keys.length); j++){
+        var k = keys[j];
+        fieldsHtml +=
+          '<div class="field"><label>' + k + ' – ' + PLAYER_ATTRS[k] + '</label>' +
+          '<input type="number" min="0" max="99" class="pa-input" data-key="' + k + '" value="' + (attrs[k]!=null ? attrs[k] : 50) + '"></div>';
+      }
+      fieldsHtml += '</div>';
+    }
+    backdrop.innerHTML =
+      '<div class="modal">' +
+      '<h2>' + esc(player.name) + '</h2>' +
+      '<p class="sub">' + player.position + ' – ' + POSITIONS[player.position] + (player.nummer!=null ? ' · #' + player.nummer : '') + '</p>' +
+      fieldsHtml +
+      '<div class="modal-actions">' +
+      '<button type="button" class="btn" id="closePlayerModal">Schließen</button>' +
+      '<button type="button" class="btn btn-primary" id="savePlayerModal">Speichern</button>' +
+      '</div></div>';
+    document.body.appendChild(backdrop);
+    backdrop.querySelector("#closePlayerModal").addEventListener("click", function(){ backdrop.remove(); });
+    backdrop.addEventListener("click", function(e){ if(e.target===backdrop) backdrop.remove(); });
+    backdrop.querySelector("#savePlayerModal").addEventListener("click", function(){
+      var newAttrs = {};
+      backdrop.querySelectorAll(".pa-input").forEach(function(input){
+        var v = Math.max(0, Math.min(99, Number(input.value) || 0));
+        newAttrs[input.dataset.key] = v;
+      });
+      player.attrs = newAttrs;
+      persist();
+      backdrop.remove();
+      render();
+      showToast(player.name + " – Attribute gespeichert.");
+    });
   }
 
   function renderTrophaeenSection(club){
@@ -1571,7 +1628,7 @@
     var jsonStr = JSON.stringify(state, null, 2);
 
     function fallbackDownload(){
-      var blob = new Blob([jsonStr], { type: "application/json" });
+      var blob = new Blob([jsonStr], { type: "application/octet-stream" });
       var url = URL.createObjectURL(blob);
       var a = document.createElement("a");
       a.href = url;
@@ -1580,7 +1637,7 @@
       a.click();
       a.remove();
       setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
-      showToast("Daten wurden heruntergeladen.");
+      showToast("Heruntergeladen: " + filename + " (im Download-Ordner deines Browsers)");
     }
 
     if(window.claude && typeof window.claude.use === "function"){
