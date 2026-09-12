@@ -302,6 +302,12 @@
     Object.keys(PLAYER_ATTRS).forEach(function(k){ attrs[k] = 50; });
     return attrs;
   }
+  var PLAYER_STATS = { spiele:"Spiele", tore:"Tore", assists:"Assists", karten:"Karten" };
+  function defaultPlayerStats(){
+    var stats = {};
+    Object.keys(PLAYER_STATS).forEach(function(k){ stats[k] = 0; });
+    return stats;
+  }
 
   var TROPHY_DEFS = [
     { titel:"Erste Schritte", desc:"Einen Vereinsmanager-Account erstellt.", type:"auto" },
@@ -765,7 +771,7 @@
       var pos = form.querySelector("#pPos").value;
       var msg = form.querySelector("#pMsg");
       if(!name){ msg.textContent = "Bitte einen Namen angeben."; return; }
-      club.players.push({ id: uid(), name: name, nummer: num ? Number(num) : null, position: pos, attrs: defaultPlayerAttrs() });
+      club.players.push({ id: uid(), name: name, nummer: num ? Number(num) : null, position: pos, attrs: defaultPlayerAttrs(), otgs: [], stats: defaultPlayerStats() });
       persist();
       form.reset();
       render();
@@ -1196,45 +1202,172 @@
   }
 
   function showPlayerModal(club, player){
-    var attrs = player.attrs || defaultPlayerAttrs();
+    player.attrs = player.attrs || defaultPlayerAttrs();
+    player.otgs = player.otgs || [];
+    player.stats = player.stats || defaultPlayerStats();
+
     var backdrop = document.createElement("div");
     backdrop.className = "modal-backdrop";
-    var fieldsHtml = "";
-    var keys = Object.keys(PLAYER_ATTRS);
-    for(var i=0; i<keys.length; i+=2){
-      fieldsHtml += '<div class="row-2">';
-      for(var j=i; j<Math.min(i+2, keys.length); j++){
-        var k = keys[j];
-        fieldsHtml +=
-          '<div class="field"><label>' + k + ' – ' + PLAYER_ATTRS[k] + '</label>' +
-          '<input type="number" min="0" max="99" class="pa-input" data-key="' + k + '" value="' + (attrs[k]!=null ? attrs[k] : 50) + '"></div>';
-      }
-      fieldsHtml += '</div>';
-    }
     backdrop.innerHTML =
       '<div class="modal">' +
       '<h2>' + esc(player.name) + '</h2>' +
       '<p class="sub">' + player.position + ' – ' + POSITIONS[player.position] + (player.nummer!=null ? ' · #' + player.nummer : '') + '</p>' +
-      fieldsHtml +
-      '<div class="modal-actions">' +
-      '<button type="button" class="btn" id="closePlayerModal">Schließen</button>' +
-      '<button type="button" class="btn btn-primary" id="savePlayerModal">Speichern</button>' +
-      '</div></div>';
+      '<div class="tabbar">' +
+        '<button type="button" data-tab="attrs" class="active">Attribute</button>' +
+        '<button type="button" data-tab="otgs">OTGs</button>' +
+        '<button type="button" data-tab="stats">Stats</button>' +
+      '</div>' +
+      '<div id="playerModalBody"></div>' +
+      '<div class="modal-actions"><button type="button" class="btn" id="closePlayerModal">Schließen</button></div>' +
+      '</div>';
     document.body.appendChild(backdrop);
+    var modalEl = backdrop.querySelector(".modal");
+    var bodyEl = backdrop.querySelector("#playerModalBody");
+    var activeTab = "attrs";
+
     backdrop.querySelector("#closePlayerModal").addEventListener("click", function(){ backdrop.remove(); });
     backdrop.addEventListener("click", function(e){ if(e.target===backdrop) backdrop.remove(); });
-    backdrop.querySelector("#savePlayerModal").addEventListener("click", function(){
-      var newAttrs = {};
-      backdrop.querySelectorAll(".pa-input").forEach(function(input){
-        var v = Math.max(0, Math.min(99, Number(input.value) || 0));
-        newAttrs[input.dataset.key] = v;
+
+    modalEl.querySelectorAll(".tabbar button").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        activeTab = btn.dataset.tab;
+        modalEl.querySelectorAll(".tabbar button").forEach(function(b){ b.classList.toggle("active", b===btn); });
+        renderBody();
       });
-      player.attrs = newAttrs;
-      persist();
-      backdrop.remove();
-      render();
-      showToast(player.name + " – Attribute gespeichert.");
     });
+
+    function renderBody(){
+      bodyEl.innerHTML = "";
+      if(activeTab==="attrs") bodyEl.appendChild(buildAttrsTab());
+      else if(activeTab==="otgs") bodyEl.appendChild(buildOtgsTab());
+      else bodyEl.appendChild(buildStatsTab());
+    }
+
+    function buildAttrsTab(){
+      var wrap = document.createElement("div");
+      var fieldsHtml = "";
+      var keys = Object.keys(PLAYER_ATTRS);
+      for(var i=0; i<keys.length; i+=2){
+        fieldsHtml += '<div class="row-2">';
+        for(var j=i; j<Math.min(i+2, keys.length); j++){
+          var k = keys[j];
+          fieldsHtml +=
+            '<div class="field"><label>' + k + ' – ' + PLAYER_ATTRS[k] + '</label>' +
+            '<input type="number" min="0" max="99" class="pa-input" data-key="' + k + '" value="' + player.attrs[k] + '"></div>';
+        }
+        fieldsHtml += '</div>';
+      }
+      wrap.innerHTML = fieldsHtml + '<button type="button" class="btn btn-primary" id="savePlayerAttrs" style="margin-top:8px;">Speichern</button>';
+      wrap.querySelector("#savePlayerAttrs").addEventListener("click", function(){
+        var newAttrs = {};
+        wrap.querySelectorAll(".pa-input").forEach(function(input){
+          newAttrs[input.dataset.key] = Math.max(0, Math.min(99, Number(input.value) || 0));
+        });
+        player.attrs = newAttrs;
+        persist();
+        backdrop.remove();
+        render();
+        showToast(player.name + " – Attribute gespeichert.");
+      });
+      return wrap;
+    }
+
+    function buildStatsTab(){
+      var wrap = document.createElement("div");
+      var keys = Object.keys(PLAYER_STATS);
+      var fieldsHtml = "";
+      for(var i=0; i<keys.length; i+=2){
+        fieldsHtml += '<div class="row-2">';
+        for(var j=i; j<Math.min(i+2, keys.length); j++){
+          var k = keys[j];
+          fieldsHtml +=
+            '<div class="field"><label>' + PLAYER_STATS[k] + '</label>' +
+            '<input type="number" min="0" class="ps-input" data-key="' + k + '" value="' + player.stats[k] + '"></div>';
+        }
+        fieldsHtml += '</div>';
+      }
+      wrap.innerHTML = fieldsHtml + '<button type="button" class="btn btn-primary" id="savePlayerStats" style="margin-top:8px;">Speichern</button>';
+      wrap.querySelector("#savePlayerStats").addEventListener("click", function(){
+        var newStats = {};
+        wrap.querySelectorAll(".ps-input").forEach(function(input){
+          newStats[input.dataset.key] = Math.max(0, Number(input.value) || 0);
+        });
+        player.stats = newStats;
+        persist();
+        backdrop.remove();
+        render();
+        showToast(player.name + " – Stats gespeichert.");
+      });
+      return wrap;
+    }
+
+    function buildOtgsTab(){
+      var wrap = document.createElement("div");
+      var form = document.createElement("form");
+      form.className = "inline";
+      form.innerHTML =
+        '<div class="field"><label>Neues Ziel</label><input type="text" id="otgText" placeholder="z. B. Passgenauigkeit Ø 80%" required></div>' +
+        '<button type="submit" class="btn btn-primary">Hinzufügen</button>';
+      form.addEventListener("submit", function(e){
+        e.preventDefault();
+        var text = form.querySelector("#otgText").value.trim();
+        if(!text) return;
+        player.otgs.push({ id: uid(), text: text, erreicht: false });
+        persist();
+        renderBody();
+      });
+      wrap.appendChild(form);
+
+      if(player.otgs.length===0){
+        var empty = document.createElement("div");
+        empty.className = "empty-note";
+        empty.style.marginTop = "14px";
+        empty.textContent = "Noch keine Ziele für diesen Monat.";
+        wrap.appendChild(empty);
+      } else {
+        var list = document.createElement("div");
+        list.className = "bench-list";
+        list.style.marginTop = "14px";
+        player.otgs.forEach(function(it){
+          var chip = document.createElement("div");
+          chip.className = "bench-chip";
+          chip.style.cursor = "default";
+          chip.style.justifyContent = "space-between";
+          var label = document.createElement("span");
+          label.textContent = (it.erreicht ? "✅" : "🎯") + " " + it.text;
+          if(it.erreicht){ label.style.textDecoration = "line-through"; label.style.color = "var(--chalk-dim)"; }
+          var actions = document.createElement("div");
+          actions.style.display = "flex";
+          actions.style.gap = "6px";
+          var toggleBtn = document.createElement("button");
+          toggleBtn.className = "btn btn-small" + (it.erreicht ? "" : " btn-primary");
+          toggleBtn.textContent = it.erreicht ? "Zurücksetzen" : "Erreicht";
+          toggleBtn.addEventListener("click", function(){
+            it.erreicht = !it.erreicht;
+            persist();
+            renderBody();
+          });
+          var delBtn = document.createElement("button");
+          delBtn.className = "del-x";
+          delBtn.title = "Ziel entfernen";
+          delBtn.textContent = "✕";
+          delBtn.addEventListener("click", function(){
+            player.otgs = player.otgs.filter(function(x){ return x.id!==it.id; });
+            persist();
+            renderBody();
+          });
+          actions.appendChild(toggleBtn);
+          actions.appendChild(delBtn);
+          chip.appendChild(label);
+          chip.appendChild(actions);
+          list.appendChild(chip);
+        });
+        wrap.appendChild(list);
+      }
+      return wrap;
+    }
+
+    renderBody();
   }
 
   function renderTrophaeenSection(club){
