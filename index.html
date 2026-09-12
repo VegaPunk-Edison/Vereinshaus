@@ -1561,7 +1561,7 @@
       if(goals.length === 0){
         var empty = document.createElement("div");
         empty.className = "empty-note";
-        empty.textContent = "Noch keine Positions-Ziele für " + player.position + " (" + POSITIONS[player.position] + ") – lege sie im Saison-Tab an.";
+        empty.textContent = "Noch keine OTGs für " + player.position + " (" + POSITIONS[player.position] + ") – lege sie im Saison-Tab an.";
         wrap.appendChild(empty);
         return wrap;
       }
@@ -1731,16 +1731,16 @@
   function buildPositionOtgsSection(club){
     var card = document.createElement("div");
     card.className = "card";
-    card.innerHTML = '<h3>Positions-Ziele</h3>';
+    card.innerHTML = '<h3>OTGs</h3>';
 
     var form = document.createElement("form");
     form.className = "inline";
     var options = Object.keys(POSITIONS).map(function(k){ return '<option value="'+k+'">'+k+' – '+POSITIONS[k]+'</option>'; }).join("");
     form.innerHTML =
       '<div class="field"><label>Position</label><select id="potgPos">' + options + '</select></div>' +
-      '<div class="field"><label>Ziel</label><input type="text" id="potgText" placeholder="z. B. Passgenauigkeit Ø 80%" required></div>' +
+      '<div class="field"><label>OTG</label><input type="text" id="potgText" placeholder="z. B. Passgenauigkeit Ø 80%" required></div>' +
       '<div class="form-msg" id="potgMsg"></div>' +
-      '<button type="submit" class="btn btn-primary">Ziel hinzufügen</button>';
+      '<button type="submit" class="btn btn-primary">OTG hinzufügen</button>';
     card.appendChild(form);
 
     form.addEventListener("submit", function(e){
@@ -1748,12 +1748,12 @@
       var pos = form.querySelector("#potgPos").value;
       var text = form.querySelector("#potgText").value.trim();
       var msg = form.querySelector("#potgMsg");
-      if(!text){ msg.textContent = "Bitte ein Ziel angeben."; return; }
+      if(!text){ msg.textContent = "Bitte ein OTG angeben."; return; }
       club.positionOtgs[pos] = club.positionOtgs[pos] || [];
       club.positionOtgs[pos].push({ id: uid(), text: text });
       persist();
       render();
-      showToast("Positions-Ziel für " + pos + " hinzugefügt.");
+      showToast("OTG für " + pos + " hinzugefügt.");
     });
 
     var posKeys = Object.keys(club.positionOtgs).filter(function(k){ return club.positionOtgs[k].length > 0; });
@@ -1762,7 +1762,7 @@
       var empty = document.createElement("div");
       empty.className = "empty-note";
       empty.style.marginTop = "16px";
-      empty.textContent = "Noch keine Positions-Ziele festgelegt. Spieler sehen diese automatisch entsprechend ihrer Position in ihrer Detailansicht.";
+      empty.textContent = "Noch keine OTGs festgelegt. Spieler sehen diese automatisch entsprechend ihrer Position in ihrer Detailansicht.";
       card.appendChild(empty);
     } else {
       var groupsWrap = document.createElement("div");
@@ -1790,14 +1790,14 @@
           label.textContent = "🎯 " + g.text;
           var delBtn = document.createElement("button");
           delBtn.className = "del-x";
-          delBtn.title = "Positions-Ziel entfernen";
+          delBtn.title = "OTG entfernen";
           delBtn.textContent = "✕";
           delBtn.addEventListener("click", function(){
             club.positionOtgs[pos] = club.positionOtgs[pos].filter(function(x){ return x.id!==g.id; });
             club.players.forEach(function(p){ if(p.otgProgress) delete p.otgProgress[g.id]; });
             persist();
             render();
-            showToast("Positions-Ziel entfernt.");
+            showToast("OTG entfernt.");
           });
           chip.appendChild(label);
           chip.appendChild(delBtn);
