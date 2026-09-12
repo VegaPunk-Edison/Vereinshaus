@@ -840,7 +840,7 @@
         id: uid(), vmId: session.vmId, name: name, ort: ort, jahr: jahr,
         farbe: selectedColor, kuerzel: kuerzel, players: [],
         manager: currentVm() ? currentVm().name : "",
-        erfolge: {}, ziele: [], todos: [],
+        erfolge: {}, ziele: [], todos: [], positionOtgs: {},
         formation: { template: "4-4-2", slots: {} }
       };
       state.clubs.push(club);
@@ -918,7 +918,7 @@
       var pos = form.querySelector("#pPos").value;
       var msg = form.querySelector("#pMsg");
       if(!name){ msg.textContent = "Bitte einen Namen angeben."; return; }
-      club.players.push({ id: uid(), name: name, nummer: num ? Number(num) : null, position: pos, attrs: defaultPlayerAttrs(), otgs: [], stats: defaultPlayerStats() });
+      club.players.push({ id: uid(), name: name, nummer: num ? Number(num) : null, position: pos, attrs: defaultPlayerAttrs(), otgProgress: {}, stats: defaultPlayerStats() });
       persist();
       form.reset();
       render();
@@ -1350,8 +1350,9 @@
 
   function showPlayerModal(club, player){
     player.attrs = normalizePlayerAttrs(player.attrs);
-    player.otgs = player.otgs || [];
+    player.otgProgress = player.otgProgress || {};
     player.stats = player.stats || defaultPlayerStats();
+    club.positionOtgs = club.positionOtgs || {};
 
     var backdrop = document.createElement("div");
     backdrop.className = "modal-backdrop";
@@ -1560,67 +1561,41 @@
 
     function buildOtgsTab(){
       var wrap = document.createElement("div");
-      var form = document.createElement("form");
-      form.className = "inline";
-      form.innerHTML =
-        '<div class="field"><label>Neues Ziel</label><input type="text" id="otgText" placeholder="z. B. Passgenauigkeit Ø 80%" required></div>' +
-        '<button type="submit" class="btn btn-primary">Hinzufügen</button>';
-      form.addEventListener("submit", function(e){
-        e.preventDefault();
-        var text = form.querySelector("#otgText").value.trim();
-        if(!text) return;
-        player.otgs.push({ id: uid(), text: text, erreicht: false });
-        persist();
-        renderBody();
-      });
-      wrap.appendChild(form);
+      var goals = (club.positionOtgs && club.positionOtgs[player.position]) || [];
 
-      if(player.otgs.length===0){
+      if(goals.length === 0){
         var empty = document.createElement("div");
         empty.className = "empty-note";
-        empty.style.marginTop = "14px";
-        empty.textContent = "Noch keine Ziele für diesen Monat.";
+        empty.textContent = "Noch keine Positions-Ziele für " + player.position + " (" + POSITIONS[player.position] + ") – lege sie im Saison-Tab an.";
         wrap.appendChild(empty);
-      } else {
-        var list = document.createElement("div");
-        list.className = "bench-list";
-        list.style.marginTop = "14px";
-        player.otgs.forEach(function(it){
-          var chip = document.createElement("div");
-          chip.className = "bench-chip";
-          chip.style.cursor = "default";
-          chip.style.justifyContent = "space-between";
-          var label = document.createElement("span");
-          label.textContent = (it.erreicht ? "✅" : "🎯") + " " + it.text;
-          if(it.erreicht){ label.style.textDecoration = "line-through"; label.style.color = "var(--chalk-dim)"; }
-          var actions = document.createElement("div");
-          actions.style.display = "flex";
-          actions.style.gap = "6px";
-          var toggleBtn = document.createElement("button");
-          toggleBtn.className = "btn btn-small" + (it.erreicht ? "" : " btn-primary");
-          toggleBtn.textContent = it.erreicht ? "Zurücksetzen" : "Erreicht";
-          toggleBtn.addEventListener("click", function(){
-            it.erreicht = !it.erreicht;
-            persist();
-            renderBody();
-          });
-          var delBtn = document.createElement("button");
-          delBtn.className = "del-x";
-          delBtn.title = "Ziel entfernen";
-          delBtn.textContent = "✕";
-          delBtn.addEventListener("click", function(){
-            player.otgs = player.otgs.filter(function(x){ return x.id!==it.id; });
-            persist();
-            renderBody();
-          });
-          actions.appendChild(toggleBtn);
-          actions.appendChild(delBtn);
-          chip.appendChild(label);
-          chip.appendChild(actions);
-          list.appendChild(chip);
-        });
-        wrap.appendChild(list);
+        return wrap;
       }
+
+      player.otgProgress = player.otgProgress || {};
+      var list = document.createElement("div");
+      list.className = "bench-list";
+      goals.forEach(function(g){
+        var done = !!player.otgProgress[g.id];
+        var chip = document.createElement("div");
+        chip.className = "bench-chip";
+        chip.style.cursor = "default";
+        chip.style.justifyContent = "space-between";
+        var label = document.createElement("span");
+        label.textContent = (done ? "✅" : "🎯") + " " + g.text;
+        if(done){ label.style.textDecoration = "line-through"; label.style.color = "var(--chalk-dim)"; }
+        var toggleBtn = document.createElement("button");
+        toggleBtn.className = "btn btn-small" + (done ? "" : " btn-primary");
+        toggleBtn.textContent = done ? "Zurücksetzen" : "Erreicht";
+        toggleBtn.addEventListener("click", function(){
+          player.otgProgress[g.id] = !player.otgProgress[g.id];
+          persist();
+          renderBody();
+        });
+        chip.appendChild(label);
+        chip.appendChild(toggleBtn);
+        list.appendChild(chip);
+      });
+      wrap.appendChild(list);
       return wrap;
     }
 
@@ -1730,6 +1705,7 @@
     var club = currentClub();
     club.todos = club.todos || [];
     club.ziele = club.ziele || [];
+    club.positionOtgs = club.positionOtgs || {};
     var wrap = document.createElement("div");
 
     var todosSection = buildChecklistSection(club, "todos", "done", {
@@ -1750,6 +1726,97 @@
       deleteTitle: "Ziel entfernen", deleteToast: "Ziel entfernt."
     }));
 
+    var potgSection = buildPositionOtgsSection(club);
+    potgSection.style.marginTop = "26px";
+    wrap.appendChild(potgSection);
+
+    return wrap;
+  }
+
+  function buildPositionOtgsSection(club){
+    var wrap = document.createElement("div");
+    wrap.className = "kader-layout";
+
+    var formCard = document.createElement("div");
+    formCard.className = "card";
+    formCard.innerHTML = '<h3>Positions-Ziel hinzufügen</h3>';
+    var form = document.createElement("form");
+    form.className = "inline";
+    var options = Object.keys(POSITIONS).map(function(k){ return '<option value="'+k+'">'+k+' – '+POSITIONS[k]+'</option>'; }).join("");
+    form.innerHTML =
+      '<div class="field"><label>Position</label><select id="potgPos">' + options + '</select></div>' +
+      '<div class="field"><label>Ziel</label><input type="text" id="potgText" placeholder="z. B. Passgenauigkeit Ø 80%" required></div>' +
+      '<div class="form-msg" id="potgMsg"></div>' +
+      '<button type="submit" class="btn btn-primary">Ziel hinzufügen</button>';
+    formCard.appendChild(form);
+
+    form.addEventListener("submit", function(e){
+      e.preventDefault();
+      var pos = form.querySelector("#potgPos").value;
+      var text = form.querySelector("#potgText").value.trim();
+      var msg = form.querySelector("#potgMsg");
+      if(!text){ msg.textContent = "Bitte ein Ziel angeben."; return; }
+      club.positionOtgs[pos] = club.positionOtgs[pos] || [];
+      club.positionOtgs[pos].push({ id: uid(), text: text });
+      persist();
+      render();
+      showToast("Positions-Ziel für " + pos + " hinzugefügt.");
+    });
+
+    var listCard = document.createElement("div");
+    listCard.className = "card";
+    var posKeys = Object.keys(club.positionOtgs).filter(function(k){ return club.positionOtgs[k].length > 0; });
+    listCard.innerHTML = '<h3>Positions-Ziele</h3>';
+
+    if(posKeys.length === 0){
+      var empty = document.createElement("div");
+      empty.className = "empty-note";
+      empty.textContent = "Noch keine Positions-Ziele festgelegt. Spieler sehen diese automatisch entsprechend ihrer Position in ihrer Detailansicht.";
+      listCard.appendChild(empty);
+    } else {
+      posKeys.forEach(function(pos){
+        var group = document.createElement("div");
+        group.style.marginBottom = "14px";
+        var heading = document.createElement("div");
+        heading.style.fontSize = "12px";
+        heading.style.fontWeight = "700";
+        heading.style.textTransform = "uppercase";
+        heading.style.letterSpacing = ".05em";
+        heading.style.color = "var(--chalk-dim)";
+        heading.style.marginBottom = "6px";
+        heading.textContent = pos + " – " + POSITIONS[pos];
+        group.appendChild(heading);
+        var list = document.createElement("div");
+        list.className = "bench-list";
+        club.positionOtgs[pos].forEach(function(g){
+          var chip = document.createElement("div");
+          chip.className = "bench-chip";
+          chip.style.cursor = "default";
+          chip.style.justifyContent = "space-between";
+          var label = document.createElement("span");
+          label.textContent = "🎯 " + g.text;
+          var delBtn = document.createElement("button");
+          delBtn.className = "del-x";
+          delBtn.title = "Positions-Ziel entfernen";
+          delBtn.textContent = "✕";
+          delBtn.addEventListener("click", function(){
+            club.positionOtgs[pos] = club.positionOtgs[pos].filter(function(x){ return x.id!==g.id; });
+            club.players.forEach(function(p){ if(p.otgProgress) delete p.otgProgress[g.id]; });
+            persist();
+            render();
+            showToast("Positions-Ziel entfernt.");
+          });
+          chip.appendChild(label);
+          chip.appendChild(delBtn);
+          list.appendChild(chip);
+        });
+        group.appendChild(list);
+        listCard.appendChild(group);
+      });
+    }
+
+    wrap.appendChild(formCard);
+    wrap.appendChild(listCard);
     return wrap;
   }
 
