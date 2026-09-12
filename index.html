@@ -302,10 +302,74 @@
     Object.keys(PLAYER_ATTRS).forEach(function(k){ attrs[k] = 50; });
     return attrs;
   }
-  var PLAYER_STATS = { spiele:"Spiele", tore:"Tore", assists:"Assists", karten:"Karten" };
+  /* Übernommen aus PIFA eSports (fussballStats.ts) – Kadermeister-Stats bleiben
+     eigenständig erfasst, keine Verknüpfung/Synchronisierung mit PIFA. */
+  var FUSSBALL_STATS = [
+    { name:'Tore', category:'Übersicht' },
+    { name:'Torvorlagen', category:'Übersicht' },
+    { name:'Schüsse', category:'Übersicht' },
+    { name:'Schussgenauigkeit', category:'Übersicht', unit:'%' },
+    { name:'Pässe', category:'Übersicht' },
+    { name:'Passgenauigkeit', category:'Übersicht', unit:'%' },
+    { name:'Dribblings', category:'Übersicht' },
+    { name:'Dribbling-Erfolgsquote', category:'Übersicht', unit:'%' },
+    { name:'Zweikämpfe', category:'Übersicht' },
+    { name:'Zweikampf-Erfolgsquote', category:'Übersicht', unit:'%' },
+    { name:'Gegentore', category:'Übersicht' },
+    { name:'Doppelpässe', category:'Pässe' },
+    { name:'Abseits', category:'Übersicht' },
+    { name:'Begangene Fouls', category:'Übersicht' },
+    { name:'Ballbesitz Erobert', category:'Übersicht' },
+    { name:'Ballverlust', category:'Übersicht' },
+    { name:'Gespielte Minuten', category:'Übersicht' },
+    { name:'Laufweg', category:'Übersicht', unit:'km' },
+    { name:'Sprintdistanz', category:'Übersicht', unit:'km' },
+    { name:'Torvorlagen (Pass)', category:'Pässe' },
+    { name:'Erwartete Torvorlagen', category:'Pässe' },
+    { name:'Zweite Vorlage', category:'Pässe' },
+    { name:'Wichtige Pässe', category:'Pässe' },
+    { name:'Überwundene Profis', category:'Pässe' },
+    { name:'Pässe gesamt', category:'Pässe' },
+    { name:'Abgeschlossene Pässe', category:'Pässe' },
+    { name:'Abgefangene Bälle', category:'Pässe' },
+    { name:'Passgenauigkeit (Pass)', category:'Pässe', unit:'%' },
+    { name:'Abseitspässe', category:'Pässe' },
+    { name:'Flanken (Versucht)', category:'Pässe' },
+    { name:'Flanken (Erfolgreich)', category:'Pässe' },
+    { name:'Flanken-Erfolgsquote', category:'Pässe', unit:'%' },
+    { name:'Pässe unter Druck (V.)', category:'Pässe' },
+    { name:'Pässe unter Druck (E.)', category:'Pässe' },
+    { name:'Tore (ohne Elfmeter)', category:'Schüsse' },
+    { name:'Erw. Tore (ohne Elfmeter)', category:'Schüsse' },
+    { name:'Schüsse gesamt', category:'Schüsse' },
+    { name:'Schüsse aufs Tor', category:'Schüsse' },
+    { name:'Verpasste Torschüsse', category:'Schüsse' },
+    { name:'Geblockte Schüsse', category:'Schüsse' },
+    { name:'Schussgenauigkeit (Schuss)', category:'Schüsse', unit:'%' },
+    { name:'Freistoßtore', category:'Schüsse' },
+    { name:'Elfmetertore', category:'Schüsse' },
+    { name:'Elfmeterschießen-Tore', category:'Schüsse' },
+    { name:'Torvorlagen durch Schüsse', category:'Schüsse' },
+    { name:'Normale Schüsse', category:'Schüsse' },
+    { name:'Effektschüsse', category:'Schüsse' },
+    { name:'Kopfbälle', category:'Schüsse' },
+    { name:'MF-Durchbrüche (V.)', category:'Ballbesitz' },
+    { name:'MF-Durchbrüche (E.)', category:'Ballbesitz' },
+    { name:'MF-Außen (Versucht)', category:'Ballbesitz' },
+    { name:'MF-Außen (Erfolgreich)', category:'Ballbesitz' },
+    { name:'AW-Durchbrüche (V.)', category:'Ballbesitz' },
+    { name:'AW-Durchbrüche (E.)', category:'Ballbesitz' },
+    { name:'AW-Außen (Versucht)', category:'Ballbesitz' },
+    { name:'AW-Außen (Erfolgreich)', category:'Ballbesitz' },
+    { name:'Überwunden', category:'Ballbesitz' },
+    { name:'Mit Spezialbew. überwunden', category:'Ballbesitz' },
+    { name:'Beinschüsse', category:'Ballbesitz' },
+    { name:'Selbstvorlagen', category:'Ballbesitz' }
+  ];
+  var STAT_CATEGORIES = ['Übersicht','Pässe','Schüsse','Ballbesitz'];
   function defaultPlayerStats(){
     var stats = {};
-    Object.keys(PLAYER_STATS).forEach(function(k){ stats[k] = 0; });
+    FUSSBALL_STATS.forEach(function(s){ stats[s.name] = 0; });
     return stats;
   }
 
@@ -1274,30 +1338,69 @@
 
     function buildStatsTab(){
       var wrap = document.createElement("div");
-      var keys = Object.keys(PLAYER_STATS);
-      var fieldsHtml = "";
-      for(var i=0; i<keys.length; i+=2){
-        fieldsHtml += '<div class="row-2">';
-        for(var j=i; j<Math.min(i+2, keys.length); j++){
-          var k = keys[j];
-          fieldsHtml +=
-            '<div class="field"><label>' + PLAYER_STATS[k] + '</label>' +
-            '<input type="number" min="0" class="ps-input" data-key="' + k + '" value="' + player.stats[k] + '"></div>';
-        }
-        fieldsHtml += '</div>';
-      }
-      wrap.innerHTML = fieldsHtml + '<button type="button" class="btn btn-primary" id="savePlayerStats" style="margin-top:8px;">Speichern</button>';
-      wrap.querySelector("#savePlayerStats").addEventListener("click", function(){
-        var newStats = {};
-        wrap.querySelectorAll(".ps-input").forEach(function(input){
-          newStats[input.dataset.key] = Math.max(0, Number(input.value) || 0);
+      var workingStats = {};
+      Object.keys(player.stats).forEach(function(k){ workingStats[k] = player.stats[k]; });
+      var activeCat = STAT_CATEGORIES[0];
+
+      var catBar = document.createElement("div");
+      catBar.className = "tabbar";
+      catBar.style.marginBottom = "14px";
+      STAT_CATEGORIES.forEach(function(cat){
+        var b = document.createElement("button");
+        b.type = "button";
+        b.textContent = cat;
+        if(cat===activeCat) b.classList.add("active");
+        b.addEventListener("click", function(){
+          captureVisibleInputs();
+          activeCat = cat;
+          catBar.querySelectorAll("button").forEach(function(bb){ bb.classList.toggle("active", bb===b); });
+          renderFields();
         });
-        player.stats = newStats;
+        catBar.appendChild(b);
+      });
+      wrap.appendChild(catBar);
+
+      var fieldsHost = document.createElement("div");
+      wrap.appendChild(fieldsHost);
+
+      function captureVisibleInputs(){
+        fieldsHost.querySelectorAll(".ps-input").forEach(function(input){
+          workingStats[input.dataset.key] = Math.max(0, Number(input.value) || 0);
+        });
+      }
+
+      function renderFields(){
+        var items = FUSSBALL_STATS.filter(function(s){ return s.category===activeCat; });
+        var html = "";
+        for(var i=0; i<items.length; i+=2){
+          html += '<div class="row-2">';
+          for(var j=i; j<Math.min(i+2, items.length); j++){
+            var s = items[j];
+            html +=
+              '<div class="field"><label>' + esc(s.name) + (s.unit ? ' (' + esc(s.unit) + ')' : '') + '</label>' +
+              '<input type="number" min="0" class="ps-input" data-key="' + esc(s.name) + '" value="' + (workingStats[s.name] != null ? workingStats[s.name] : 0) + '"></div>';
+          }
+          html += '</div>';
+        }
+        fieldsHost.innerHTML = html;
+      }
+      renderFields();
+
+      var saveBtn = document.createElement("button");
+      saveBtn.type = "button";
+      saveBtn.className = "btn btn-primary";
+      saveBtn.style.marginTop = "8px";
+      saveBtn.textContent = "Speichern";
+      saveBtn.addEventListener("click", function(){
+        captureVisibleInputs();
+        player.stats = workingStats;
         persist();
         backdrop.remove();
         render();
         showToast(player.name + " – Stats gespeichert.");
       });
+      wrap.appendChild(saveBtn);
+
       return wrap;
     }
 
