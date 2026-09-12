@@ -1137,19 +1137,17 @@
   function buildChecklistSection(club, key, flagKey, cfg){
     var items = club[key] = club[key] || [];
     var inputId = key + "Text";
-    var section = document.createElement("div");
-    section.className = "kader-layout";
+    var card = document.createElement("div");
+    card.className = "card";
+    card.innerHTML = '<h3>' + cfg.listTitle + ' (' + items.length + ')</h3>';
 
-    var formCard = document.createElement("div");
-    formCard.className = "card";
-    formCard.innerHTML = '<h3>' + cfg.formTitle + '</h3>';
     var form = document.createElement("form");
     form.className = "inline";
     form.innerHTML =
       '<div class="field"><label>' + cfg.fieldLabel + '</label><input type="text" id="' + inputId + '" placeholder="' + cfg.placeholder + '" required></div>' +
       '<div class="form-msg" id="' + key + 'Msg"></div>' +
       '<button type="submit" class="btn btn-primary">' + cfg.addBtnLabel + '</button>';
-    formCard.appendChild(form);
+    card.appendChild(form);
 
     form.addEventListener("submit", function(e){
       e.preventDefault();
@@ -1164,17 +1162,16 @@
       showToast(cfg.addToast);
     });
 
-    var listCard = document.createElement("div");
-    listCard.className = "card";
-    listCard.innerHTML = '<h3>' + cfg.listTitle + ' (' + items.length + ')</h3>';
     if(items.length===0){
       var empty = document.createElement("div");
       empty.className = "empty-note";
+      empty.style.marginTop = "16px";
       empty.textContent = cfg.emptyText;
-      listCard.appendChild(empty);
+      card.appendChild(empty);
     } else {
       var list = document.createElement("div");
       list.className = "bench-list";
+      list.style.marginTop = "16px";
       items.forEach(function(it){
         var done = !!it[flagKey];
         var chip = document.createElement("div");
@@ -1211,12 +1208,10 @@
         chip.appendChild(actions);
         list.appendChild(chip);
       });
-      listCard.appendChild(list);
+      card.appendChild(list);
     }
 
-    section.appendChild(formCard);
-    section.appendChild(listCard);
-    return section;
+    return card;
   }
 
   /* ============ PIFA-eSports-Verknüpfung (optional, App-Level-Fortschritt) ============ */
@@ -1734,12 +1729,10 @@
   }
 
   function buildPositionOtgsSection(club){
-    var wrap = document.createElement("div");
-    wrap.className = "kader-layout";
+    var card = document.createElement("div");
+    card.className = "card";
+    card.innerHTML = '<h3>Positions-Ziele</h3>';
 
-    var formCard = document.createElement("div");
-    formCard.className = "card";
-    formCard.innerHTML = '<h3>Positions-Ziel hinzufügen</h3>';
     var form = document.createElement("form");
     form.className = "inline";
     var options = Object.keys(POSITIONS).map(function(k){ return '<option value="'+k+'">'+k+' – '+POSITIONS[k]+'</option>'; }).join("");
@@ -1748,7 +1741,7 @@
       '<div class="field"><label>Ziel</label><input type="text" id="potgText" placeholder="z. B. Passgenauigkeit Ø 80%" required></div>' +
       '<div class="form-msg" id="potgMsg"></div>' +
       '<button type="submit" class="btn btn-primary">Ziel hinzufügen</button>';
-    formCard.appendChild(form);
+    card.appendChild(form);
 
     form.addEventListener("submit", function(e){
       e.preventDefault();
@@ -1763,17 +1756,17 @@
       showToast("Positions-Ziel für " + pos + " hinzugefügt.");
     });
 
-    var listCard = document.createElement("div");
-    listCard.className = "card";
     var posKeys = Object.keys(club.positionOtgs).filter(function(k){ return club.positionOtgs[k].length > 0; });
-    listCard.innerHTML = '<h3>Positions-Ziele</h3>';
 
     if(posKeys.length === 0){
       var empty = document.createElement("div");
       empty.className = "empty-note";
+      empty.style.marginTop = "16px";
       empty.textContent = "Noch keine Positions-Ziele festgelegt. Spieler sehen diese automatisch entsprechend ihrer Position in ihrer Detailansicht.";
-      listCard.appendChild(empty);
+      card.appendChild(empty);
     } else {
+      var groupsWrap = document.createElement("div");
+      groupsWrap.style.marginTop = "16px";
       posKeys.forEach(function(pos){
         var group = document.createElement("div");
         group.style.marginBottom = "14px";
@@ -1811,13 +1804,12 @@
           list.appendChild(chip);
         });
         group.appendChild(list);
-        listCard.appendChild(group);
+        groupsWrap.appendChild(group);
       });
+      card.appendChild(groupsWrap);
     }
 
-    wrap.appendChild(formCard);
-    wrap.appendChild(listCard);
-    return wrap;
+    return card;
   }
 
   function renderVereinserfolgeSection(club){
